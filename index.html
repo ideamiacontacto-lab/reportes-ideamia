@@ -16,9 +16,9 @@
 <div class="wrap">
   <header class="site-head"><a class="logo" href="./">Idea<b>mia</b></a><span class="pill" id="who"></span><span class="progress" id="progress"></span></header>
   <section class="hero">
-    <div class="puzzle" aria-hidden="true"><svg viewBox="0 0 300 260"><defs><path id="pz" d="M20 20 H42 C40 12 44 6 50 6 C56 6 60 12 58 20 H80 V42 C88 40 94 44 94 50 C94 56 88 60 80 58 V80 H58 C60 88 56 94 50 94 C44 94 40 88 42 80 H20 V58 C12 60 6 56 6 50 C6 44 12 40 20 42 Z"/></defs><g class="p p1" style="--r:-14deg"><g transform="translate(150 20) scale(1.25)"><use href="#pz" fill="#8F8F8F" transform="translate(0 9)"/><use href="#pz" fill="#E9E9E9"/></g></g><g class="p p2" style="--r:18deg"><g transform="translate(40 110) scale(1.05)"><use href="#pz" fill="#B3A900" transform="translate(0 9)"/><use href="#pz" fill="#FFF200"/></g></g><g class="p p3" style="--r:-6deg"><g transform="translate(175 150) scale(.9)"><use href="#pz" fill="#262626" transform="translate(0 8)"/><use href="#pz" fill="#4A4A4A"/></g></g></svg></div>
+    <div class="puzzle" aria-hidden="true"><svg viewBox="0 0 300 260"><defs><path id="pz" d="M20 20 H42 C40 12 44 6 50 6 C56 6 60 12 58 20 H80 V42 C88 40 94 44 94 50 C94 56 88 60 80 58 V80 H58 C60 88 56 94 50 94 C44 94 40 88 42 80 H20 V58 C12 60 6 56 6 50 C6 44 12 40 20 42 Z"/></defs><g class="p p1" style="--r:-14deg"><g class="pin"><g transform="translate(150 20) scale(1.25)"><use href="#pz" fill="#8F8F8F" transform="translate(0 9)"/><use href="#pz" fill="#E9E9E9"/></g></g></g><g class="p p2" style="--r:18deg"><g class="pin"><g transform="translate(40 110) scale(1.05)"><use href="#pz" fill="#B3A900" transform="translate(0 9)"/><use href="#pz" fill="#FFF200"/></g></g></g><g class="p p3" style="--r:-6deg"><g class="pin"><g transform="translate(175 150) scale(.9)"><use href="#pz" fill="#262626" transform="translate(0 8)"/><use href="#pz" fill="#4A4A4A"/></g></g></g></svg></div>
     <div class="kicker">— Estudio creativo · Sistema de reportes</div>
-    <h1 class="wordmark"><span class="thin">Reportes</span><span class="heavy">de <b>redes</b></span></h1>
+    <h1 class="wordmark"><span class="thin ln"><span>Reportes</span></span><span class="heavy ln"><span>de <b>redes</b></span></span></h1>
     <p class="lead">Las marcas no se construyen de una sola vez. <strong>Se construyen pieza por pieza</strong>, y cada reporte es una.</p>
   </section>
 
@@ -41,11 +41,12 @@
   <div id="errbox" class="errbox hidden"></div>
   <div id="form"></div>
   <div id="doneView" class="hidden"></div>
+  <div id="printArea" aria-hidden="true"></div>
 </div>
 
 <div class="stickybar" id="bar">
   <div class="in">
-    <div class="st" id="status">Borrador guardado en este dispositivo automáticamente</div>
+    <div class="meter" id="meter"><div class="ring" title="Obligatorios completos"><svg viewBox="0 0 36 36"><circle class="bgc" cx="18" cy="18" r="15.9155"/><circle class="fgc" id="ringFg" cx="18" cy="18" r="15.9155"/></svg><b id="ringPct">0%</b></div><div class="st" id="status">Borrador guardado en este dispositivo automáticamente</div></div>
     <button class="btn" id="send">Enviar reporte</button>
   </div>
 </div>
@@ -367,7 +368,7 @@
       const p = idx[`cm|${marca}|${periodo}`];
       if(!p) return `<div class="ref">El CM todavía no cargó el reporte de esta semana para esta marca.</div>`;
       const sent=new Date(p.enviado_en);
-      return `<div class="ref" style="border-style:solid"><div><b>Reporte del CM · ${esc(p.periodo_label)}</b> <span class="muted">· cargado por ${esc(p.responsable)} el ${isNaN(sent)?"":sent.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"})}</span></div>${renderReadOnly(FORMS.cm, p.datos||{})}<div class="help" style="margin-top:12px">Leelo completo y confirmá abajo para seguir con tu reporte.</div></div>`;
+      return `<div class="ref" style="border-style:solid"><div><b>Reporte del CM · ${esc(p.periodo_label)}</b> <span class="muted">· cargado por ${esc(p.responsable)} el ${isNaN(sent)?"":sent.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit"})}</span></div>${renderReadOnly(FORMS.cm, p.datos||{})}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px"><span class="help" style="margin:0">Leelo completo y confirmá abajo para seguir con tu reporte.</span><button type="button" class="btn sm ghost" data-pdf-cm="1">Descargar PDF del CM</button></div></div>`;
     }
     if(sec.ref==="periodo"){
       const ag = P.aggregate(idx, marca, periodo);
@@ -448,19 +449,27 @@
   }
   // ---------- contador de obligatorios ----------
   function missingList(){
-    const errs=[];
+    const errs=[]; let total = editMode ? 1 : 0;
     if(editMode && !(vals.edicion_motivo||"").trim()) errs.push({id:"edicion_motivo", msg:"¿Qué corregís y por qué?"});
     window.walkFields(FORMS[tipo], vals, (f,ctx)=>{
       if(f.type==="table"||f.type==="list"||f.type==="fotos") return;
-      if(f.showIf && !f.showIf(vals)) return; if(!isReq(f)) return;
+      if(f.showIf && !f.showIf(vals)) return; if(!isReq(f)) return; total++;
       const v = vals[f.id]; if(v==null||v===""||(Array.isArray(v)&&!v.length)||(f.type==="number"&&U.num(v)==null)||(f.type==="url"&&!/^https?:\/\/\S+$/i.test(String(v).trim()))) errs.push({id:f.id, msg:(ctx.repeat?`${ctx.repeat.title(ctx.i)} · `:"")+f.label});
     });
+    errs.total = total;
     return errs;
+  }
+  // Anillo de progreso: porcentaje de obligatorios completos; al 100 % el botón Enviar se ilumina
+  function updateRing(m){
+    const fg=document.getElementById("ringFg"), pc=document.getElementById("ringPct"), me=document.getElementById("meter"); if(!fg||!pc) return;
+    const tot=m.total||0, p = tot ? Math.round((tot-m.length)/tot*100) : 100;
+    fg.style.strokeDashoffset = String(100-p); pc.textContent = p+"%";
+    me.classList.toggle("full", p===100); $("#send").classList.toggle("ready", p===100 && !sending);
   }
   function updateMissing(){
     const st=$("#status"); if(!st) return;
     if(tipo==="sm" && (document.getElementById("cmGate")||document.getElementById("dupGate"))) return;
-    const m = missingList();
+    const m = missingList(); updateRing(m);
     const loc = draftFail ? `<span style="color:var(--bad)">no se guarda en este dispositivo</span>` : "guardado en este dispositivo";
     const nube = !U.nubeOn() ? "" : nubeEstado.startsWith("ok:") ? ` · <span style="color:var(--ok)">☁ copia en la nube ${nubeEstado.slice(3)}</span>` : nubeEstado==="error" ? ` · <span style="color:var(--warn)">☁ sin conexión con la nube, reintentando</span>` : (nubeEstado==="pend"||nubeEstado==="subiendo") ? " · ☁ guardando en la nube…" : "";
     const bor = loc + nube;
@@ -591,6 +600,7 @@
     }
   });
   $("#form").addEventListener("click", e=>{
+    if(e.target.closest("[data-pdf-cm]")){ const p=idx[`cm|${marca}|${periodo}`]; if(p) pdfReporte(p); return; }
     const b=e.target.closest("[data-logo-clear]"); if(b){ delete vals[b.dataset.logoClear]; saveDraft(); renderForm(); applyGate(); return; }
     const sw=e.target.closest("[data-swatch]"); if(sw){ vals[sw.dataset.swatch]=sw.dataset.color; saveDraft(); renderForm(); applyGate(); return; }
     const add=e.target.closest("[data-list-add]"); if(add){ const id=add.dataset.listAdd; const f=findListDef(id); vals[`${id}_n`]=String(listCount(f)+1); saveDraft(); renderForm(); applyGate(); document.querySelector(`[data-field="${id}"] .sub:last-of-type input`)?.focus(); return; }
@@ -849,10 +859,11 @@
       </div>`;
     }
     if(p.tipo==="cm" && mk.canal && dd.canal_movido==="No"){ recordatorios = `<div class="card accent" style="text-align:left;margin-top:22px"><h3 style="margin-bottom:6px">Antes de cerrar</h3><div><b>El canal social no se movió esta semana.</b> Coordinalo con la Social Media para que la próxima sí.</div></div>`; }
-    dv.innerHTML = `<div class="card done"><div class="big">✓</div><h2 style="margin:12px 0 6px">Reporte enviado</h2><div class="muted">${esc(p.marca)} · ${esc(p.periodo_label)} · ${esc(FORMS[p.tipo].titulo)}</div>${recordatorios}
+    dv.innerHTML = `<div class="card done"><div class="big">✓<i></i><i></i><i></i><i></i><i></i></div><h2 style="margin:12px 0 6px">Reporte enviado</h2><div class="muted">${esc(p.marca)} · ${esc(p.periodo_label)} · ${esc(FORMS[p.tipo].titulo)}</div>${recordatorios}
       <div class="small muted" style="margin-top:10px">${pend.length?`Te faltan: ${pend.map(m=>esc(m.nombre)).join(", ")}`:"No te queda ninguna marca pendiente para este período."}</div>
       <div class="small muted" style="margin-top:6px">El reporte puede tardar hasta un minuto en aparecer en "Reportes anteriores" y en el panel.</div>
-      <div style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">${p.tipo==="periodico"?`<a class="btn" href="${presUrl(p)}" target="_blank">Abrir la presentación</a>`:""}<button class="btn ${p.tipo==="periodico"?"ghost":""}" id="another">${pend.length?"Cargar la siguiente marca":"Volver"}</button></div></div>`;
+      <div style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn" id="pdfDone">Descargar PDF</button>${p.tipo==="periodico"?`<a class="btn ghost" href="${presUrl(p)}" target="_blank">Abrir la presentación</a>`:""}<button class="btn ghost" id="another">${pend.length?"Cargar la siguiente marca":"Volver"}</button></div></div>`;
+    $("#pdfDone").addEventListener("click",()=>pdfReporte(Object.assign({}, p, {datos: dd})));
     $("#another").addEventListener("click",()=>{ if(pend.length) marca = pend[0].slug; switchForm(); window.scrollTo(0,0); });
   }
 
@@ -866,6 +877,31 @@
         <div style="margin-bottom:8px"><b>Motivo:</b> ${esc(b.edicion_motivo||"(sin motivo registrado)")}</div>
         ${keys.length?`<table class="t"><thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead><tbody>${keys.map(k=>`<tr><td>${esc(labelOf(r.tipo,k))}</td><td class="muted">${esc(Array.isArray(a[k])?a[k].join(" · "):(a[k]??"–"))}</td><td><b>${esc(Array.isArray(b[k])?b[k].join(" · "):(b[k]??"–"))}</b></td></tr>`).join("")}</tbody></table>`:'<div class="small muted">Sin cambios en los campos (solo reenvío).</div>'}</div>`; }
     return h;
+  }
+  // ---------- PDF ----------
+  // Arma una versión limpia (fondo blanco) del reporte y abre el diálogo de impresión: "Guardar como PDF".
+  function pdfReporte(r){
+    if(!r) return;
+    const mk = C.MARCAS.find(x=>x.slug===r.marca_slug)||{};
+    const sent = new Date(r.enviado_en); const fecha = isNaN(sent) ? "" : sent.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    const titulo = (FORMS[r.tipo]||{}).titulo || "Reporte";
+    const box = $("#printArea");
+    box.innerHTML = `<div class="pr-head"><div class="pr-logo">IDEA<b>MIA</b></div><div class="pr-kicker">— Estudio creativo · Sistema de reportes</div></div>
+      <h1 class="pr-title">${esc(titulo)}</h1>
+      <div class="pr-meta"><div><span>Marca</span><b>${esc(r.marca||mk.nombre||"")}</b></div><div><span>Período</span><b>${esc(r.periodo_label||"")}</b></div><div><span>Cargó</span><b>${esc(r.responsable||"")}</b></div><div><span>Enviado</span><b>${esc(fecha)}</b></div></div>
+      ${r.version>1?`<div class="pr-note">Versión corregida (v${r.version}).</div>`:""}
+      <div class="pr-body">${renderReadOnly(FORMS[r.tipo]||FORMS.sm, r.datos||{})}</div>
+      <div class="pr-foot">Estudio Ideamia · Las marcas se construyen pieza por pieza.</div>`;
+    const t0 = document.title;
+    document.title = `${titulo} · ${r.marca||""} · ${String(r.periodo_label||"").replace(/\//g,"-")}`; // nombre sugerido del archivo
+    document.body.classList.add("printing");
+    const fin = () => { document.body.classList.remove("printing"); document.title = t0; box.innerHTML=""; window.removeEventListener("afterprint", fin); };
+    window.addEventListener("afterprint", fin);
+    // se espera a que carguen las miniaturas de las capturas antes de imprimir
+    const imgs = Array.from(box.querySelectorAll("img")); let listo=false;
+    const imprimir = () => { if(listo) return; listo=true; setTimeout(()=>window.print(), 150); };
+    Promise.all(imgs.map(im => im.complete ? 0 : new Promise(res=>{ im.onload=im.onerror=res; }))).then(imprimir);
+    setTimeout(imprimir, 4000);
   }
   // ---------- historial ----------
   function presUrl(r){ return `presentacion.html?marca=${encodeURIComponent(r.marca_slug)}&periodo=${encodeURIComponent(r.periodo_id)}`; }
@@ -882,7 +918,7 @@
     for(const r of list){ const m=U.mesDe(r); (groups[m] ??= []).push(r); }
     const meses = Object.keys(groups).sort().reverse();
     const fmtD = s => { const d=new Date(s); return isNaN(d)?esc(s):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"2-digit"}); };
-    const rowHtml = (r,i) => `<tr><td><b>${esc(r.marca)}</b></td><td>${TL[r.tipo]||esc(r.tipo)}</td><td>${esc(r.periodo_label)}</td><td>${esc(r.responsable)}</td><td class="muted">${fmtD(r.enviado_en)}${r.version>1?` <span class="pill warn" style="padding:2px 7px;font-size:11px">corregido · v${r.version}</span>`:""}</td><td style="white-space:nowrap"><button class="btn sm ghost" data-hv="${i}">Ver</button> ${puedeEditar(r)?`<button class="btn sm ghost" data-he="${i}">Editar</button>`:""} ${r.tipo==="periodico"?`<a class="btn sm" href="${presUrl(r)}" target="_blank">Presentación</a>`:""} ${isProject ? `<button class="btn sm ghost" data-del="${i}" title="Eliminar" style="border-color:rgba(255,107,107,.5);color:var(--bad)">Eliminar</button>`:""}</td></tr><tr class="hidden" data-hd="${i}"><td colspan="6" style="background:var(--surface2)"></td></tr>`;
+    const rowHtml = (r,i) => `<tr><td><b>${esc(r.marca)}</b></td><td>${TL[r.tipo]||esc(r.tipo)}</td><td>${esc(r.periodo_label)}</td><td>${esc(r.responsable)}</td><td class="muted">${fmtD(r.enviado_en)}${r.version>1?` <span class="pill warn" style="padding:2px 7px;font-size:11px">corregido · v${r.version}</span>`:""}</td><td style="white-space:nowrap"><button class="btn sm ghost" data-hv="${i}">Ver</button> <button class="btn sm ghost" data-hp="${i}" title="Descargar PDF">PDF</button> ${puedeEditar(r)?`<button class="btn sm ghost" data-he="${i}">Editar</button>`:""} ${r.tipo==="periodico"?`<a class="btn sm" href="${presUrl(r)}" target="_blank">Presentación</a>`:""} ${isProject ? `<button class="btn sm ghost" data-del="${i}" title="Eliminar" style="border-color:rgba(255,107,107,.5);color:var(--bad)">Eliminar</button>`:""}</td></tr><tr class="hidden" data-hd="${i}"><td colspan="6" style="background:var(--surface2)"></td></tr>`;
     box.innerHTML = `<div class="card">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><h2>Reportes anteriores</h2><select id="histMarca" style="width:auto;min-width:180px"><option value="todas">Todas las marcas</option>${ms.map(m=>`<option value="${m.slug}" ${m.slug===histMarca?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select><span class="small muted">${list.length} reportes</span></div>
       ${reportsLoaded ? "" : '<div class="small muted">Cargando…</div>'}
@@ -891,6 +927,7 @@
       ${list.length?"":'<div class="muted small" style="margin-top:8px">Todavía no hay reportes cargados.</div>'}</div>`;
     $("#histMarca").addEventListener("change",e=>{ histMarca=e.target.value; renderHistorial(); });
     box.querySelectorAll("[data-hv]").forEach(b=>b.addEventListener("click",()=>{ const i=b.dataset.hv; const tr=box.querySelector(`[data-hd="${i}"]`); tr.classList.toggle("hidden"); const td=tr.firstElementChild; if(!td.innerHTML){ const r=list[i]; let h=renderReadOnly(FORMS[r.tipo]||FORMS.sm, r.datos||{}); if(isProject && r.versiones&&r.versiones.length){ h = renderCambios(r) + h + `<details style="margin-top:12px"><summary class="muted small" style="cursor:pointer">Versiones anteriores completas (${r.versiones.length})</summary>${r.versiones.map(v=>`<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border2)"><div class="small muted">Enviado ${fmtD(v.enviado_en)} por ${esc(v.responsable)}</div>${renderReadOnly(FORMS[v.tipo]||FORMS.sm, v.datos||{})}</div>`).join("")}</details>`; } td.innerHTML=h; } }));
+    box.querySelectorAll("[data-hp]").forEach(b=>b.addEventListener("click",()=>pdfReporte(list[b.dataset.hp])));
     box.querySelectorAll("[data-he]").forEach(b=>b.addEventListener("click",()=>{
       const r=list[b.dataset.he];
       tipo=r.tipo; marca=r.marca_slug; periodo=r.periodo_id; if(periodo.includes("+")) dur=Number(periodo.split("+")[1]);
