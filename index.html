@@ -2,9 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<!-- This site is hosted on Netlify. Anyone can build and deploy a site
-     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=f5941991-98be-488b-9484-131c72463ede
-     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Reporte semanal · Ideamia</title>
 <link rel="stylesheet" href="styles.css">
@@ -13,13 +10,15 @@
 <script src="forms.js"></script>
 <script src="periodico.js"></script>
 <script src="analisis.js"></script>
+<script src="fx.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar">
-    <div class="brand"><div class="mark">I</div><div class="t">Estudio Ideamia<b>Reportes de redes</b></div></div>
-    <span class="pill" id="who"></span>
-  </div>
+  <header class="hero">
+    <div class="hero-top"><span>Estudio Ideamia ✺ Sistema de reportes</span><span class="pill" id="who"></span></div>
+    <h1 class="wordmark"><span class="thin">Reportes</span><span class="heavy">Ideamia</span></h1>
+  </header>
+  <div class="marquee" aria-hidden="true"><div class="track"><span>Social Media<i>✺</i>Community Manager<i>✺</i>Métricas que cuentan<i>✺</i>Contenido que funciona<i>✺</i>Aprender y escalar<i>✺</i></span><span>Social Media<i>✺</i>Community Manager<i>✺</i>Métricas que cuentan<i>✺</i>Contenido que funciona<i>✺</i>Aprender y escalar<i>✺</i></span></div></div>
 
   <div class="seg" id="nav" style="margin-bottom:18px"><label><input type="radio" name="nav" value="nuevo" checked><span>Nuevo reporte</span></label><label><input type="radio" name="nav" value="historial"><span>Reportes anteriores</span></label></div>
 
@@ -207,7 +206,7 @@
     if(f.type==="color"){
       const c = v || "#FFF200";
       const sw = ["#FFF200","#FF3B30","#FF7A00","#FFB800","#22C55E","#00B8A9","#2F80ED","#7C3AED","#EC4899","#F5F5F5"];
-      return `<div class="f" ${wrapAttrs}>${lbl(f)}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input type="color" name="${f.id}" value="${esc(c)}" style="width:56px;height:44px;padding:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px"><span class="mono muted" data-colorval>${esc(c)}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${sw.map(x=>`<button type="button" data-swatch="${f.id}" data-color="${x}" title="${x}" style="width:24px;height:24px;border-radius:6px;border:2px solid ${x.toLowerCase()===String(c).toLowerCase()?"#fff":"var(--border2)"};background:${x};cursor:pointer"></button>`).join("")}</span></div>${help||'<div class="help">Elegí un color de la paleta o usá el selector para poner el exacto de la marca.</div>'}</div>`;
+      return `<div class="f" ${wrapAttrs}>${lbl(f)}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input type="color" name="${f.id}" value="${esc(c)}" style="width:56px;height:44px;padding:4px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px"><span class="mono muted" data-colorval>${esc(c)}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${sw.map(x=>`<button type="button" data-swatch="${f.id}" data-color="${x}" title="${x}" style="width:24px;height:24px;border-radius:6px;border:2px solid ${x.toLowerCase()===String(c).toLowerCase()?"var(--text)":"var(--border2)"};background:${x};cursor:pointer"></button>`).join("")}</span></div>${help||'<div class="help">Elegí un color de la paleta o usá el selector para poner el exacto de la marca.</div>'}</div>`;
     }
     if(f.type==="fotos"){
       const arr = Array.isArray(v)?v:[];
@@ -884,7 +883,7 @@
     box.innerHTML = `<div class="card">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><h2>Reportes anteriores</h2><select id="histMarca" style="width:auto;min-width:180px"><option value="todas">Todas las marcas</option>${ms.map(m=>`<option value="${m.slug}" ${m.slug===histMarca?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select><span class="small muted">${list.length} reportes</span></div>
       ${reportsLoaded ? "" : '<div class="small muted">Cargando…</div>'}
-      ${meses.map((m,gi)=>{ const mm=U.monthFromId(m); const rs=groups[m]; return `<details class="sub" ${gi===0?"open":""}><summary style="cursor:pointer;font-family:'Barlow Condensed';font-weight:700;font-size:17px;letter-spacing:.04em">📁 ${esc(mm.label)} <span class="muted" style="font-weight:500">· ${rs.length} reporte${rs.length>1?"s":""}</span></summary>
+      ${meses.map((m,gi)=>{ const mm=U.monthFromId(m); const rs=groups[m]; return `<details class="sub" ${gi===0?"open":""}><summary style="cursor:pointer;font-family:var(--f-mono);font-weight:700;font-size:17px;letter-spacing:.04em">📁 ${esc(mm.label)} <span class="muted" style="font-weight:500">· ${rs.length} reporte${rs.length>1?"s":""}</span></summary>
         <table class="t" style="margin-top:8px"><thead><tr><th>Marca</th><th>Tipo</th><th>Período</th><th>Cargó</th><th>Enviado</th><th></th></tr></thead><tbody>${rs.map(r=>rowHtml(r, list.indexOf(r))).join("")}</tbody></table></details>`; }).join("")}
       ${list.length?"":'<div class="muted small" style="margin-top:8px">Todavía no hay reportes cargados.</div>'}</div>`;
     $("#histMarca").addEventListener("change",e=>{ histMarca=e.target.value; renderHistorial(); });

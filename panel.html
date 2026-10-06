@@ -2,9 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<!-- This site is hosted on Netlify. Anyone can build and deploy a site
-     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=f5941991-98be-488b-9484-131c72463ede
-     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Panel de reportes · Ideamia</title>
 <link rel="stylesheet" href="styles.css">
@@ -13,13 +10,14 @@
 <script src="forms.js"></script>
 <script src="periodico.js"></script>
 <script src="analisis.js"></script>
+<script src="fx.js"></script>
 <style>
   .wrap{max-width:1180px}
   .gate{max-width:380px;margin:80px auto}
   .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
   .sum .kpi{min-width:0}
   .grid-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
-  table.st{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-family:'Barlow Condensed'}
+  table.st{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-family:var(--f-mono)}
   table.st th{position:sticky;top:0;background:var(--surface);z-index:2;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 10px;border-bottom:1px solid var(--border);text-align:center;font-weight:600}
   table.st th:first-child,table.st td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:170px}
   table.st td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
@@ -35,30 +33,31 @@
   .chip.na{opacity:.45;border-style:dotted}
   .chip.wait{color:var(--muted);border-color:var(--border2);opacity:.85}
   .chip:hover.ok,.chip:hover.late{filter:brightness(1.15)}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:'Barlow Condensed';font-size:13px;color:var(--muted);margin:10px 0 0}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--f-mono);font-size:13px;color:var(--muted);margin:10px 0 0}
   .legend span i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
   .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
   .toolbar select{width:auto;min-width:200px}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:80;display:flex;justify-content:flex-end}
   .modal .pane{width:min(860px,100%);height:100%;overflow:auto;background:var(--bg);border-left:1px solid var(--border);padding:24px 22px 60px}
-  .pane .close{position:sticky;top:0;float:right;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-family:'Barlow Condensed';font-weight:600;z-index:3}
+  .pane .close{position:sticky;top:0;float:right;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-family:var(--f-mono);font-weight:600;z-index:3}
   .rv{margin:0 0 10px}
-  .rv .k{font-family:'Barlow Condensed';font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .rv .k{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
   .rv .v{white-space:pre-wrap}
   .rv .v.empty{color:var(--dim)}
   .sec-title{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--border);margin:22px 0 12px;padding-bottom:6px}
-  .sec-title .num{font-family:'Anton';color:var(--accent);font-size:22px}
-  .tag{font-family:'Barlow Condensed';font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
+  .sec-title .num{font-family:var(--f-display);color:var(--accent);font-size:22px}
+  .tag{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
   .tag.ok{color:var(--ok)}.tag.bad{color:var(--bad)}.tag.warn{color:var(--warn)}
   .alertas li{margin-bottom:4px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar">
-    <div class="brand"><div class="mark">I</div><div class="t">Estudio Ideamia<b>Panel de reportes</b></div></div>
-    <div style="display:flex;gap:8px;align-items:center"><a class='pill' href='/' target='_blank'>Formulario</a><button class="btn sm ghost" id="reload">Actualizar</button></div>
-  </div>
+  <header class="hero">
+    <div class="hero-top"><span>Estudio Ideamia ✺ Panel de revisión</span><div style="display:flex;gap:8px;align-items:center"><a class='pill' href='./' target='_blank'>Formulario ↗</a><button class="btn sm ghost" id="reload">Actualizar</button></div></div>
+    <h1 class="wordmark"><span class="thin">Panel</span><span class="heavy">Ideamia</span></h1>
+  </header>
+  <div class="marquee" aria-hidden="true"><div class="track"><span>Entregas<i>✺</i>Vencimientos<i>✺</i>Correcciones<i>✺</i>Trimestrales<i>✺</i>Equipo al día<i>✺</i></span><span>Entregas<i>✺</i>Vencimientos<i>✺</i>Correcciones<i>✺</i>Trimestrales<i>✺</i>Equipo al día<i>✺</i></span></div></div>
 
   <div id="gate" class="card gate hidden">
     <h2 style="margin-bottom:12px">Acceso</h2>
