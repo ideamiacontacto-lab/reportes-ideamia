@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=loops&utm_source=ai-legible&utm_medium=owned&utm_content=comment&utm_id=f5941991-98be-488b-9484-131c72463ede
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel de reportes · Ideamia</title>
+<link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script src="forms.js"></script>
+<script src="periodico.js"></script>
+<script src="analisis.js"></script>
+<style>
+  .wrap{max-width:1180px}
+  .gate{max-width:380px;margin:80px auto}
+  .sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+  .sum .kpi{min-width:0}
+  .grid-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)}
+  table.st{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-family:'Barlow Condensed'}
+  table.st th{position:sticky;top:0;background:var(--surface);z-index:2;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:12px 10px;border-bottom:1px solid var(--border);text-align:center;font-weight:600}
+  table.st th:first-child,table.st td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:170px}
+  table.st td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+  table.st tr:last-child td{border-bottom:0}
+  .bn{font-weight:700;font-size:17px;display:block}
+  .br{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .cell{display:inline-flex;flex-direction:column;gap:4px}
+  .chip{display:inline-flex;align-items:center;gap:6px;min-width:64px;justify-content:center;padding:6px 8px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:.04em;border:1px solid var(--border2);color:var(--dim);cursor:default;text-transform:uppercase}
+  .chip.ok{background:rgba(92,227,138,.12);border-color:rgba(92,227,138,.45);color:var(--ok);cursor:pointer}
+  .chip.late{background:rgba(255,180,84,.12);border-color:rgba(255,180,84,.45);color:var(--warn);cursor:pointer}
+  .chip.miss{background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.45);color:var(--bad)}
+  .chip.wait{border-style:dashed}
+  .chip.na{opacity:.45;border-style:dotted}
+  .chip.wait{color:var(--muted);border-color:var(--border2);opacity:.85}
+  .chip:hover.ok,.chip:hover.late{filter:brightness(1.15)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:'Barlow Condensed';font-size:13px;color:var(--muted);margin:10px 0 0}
+  .legend span i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .toolbar select{width:auto;min-width:200px}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:80;display:flex;justify-content:flex-end}
+  .modal .pane{width:min(860px,100%);height:100%;overflow:auto;background:var(--bg);border-left:1px solid var(--border);padding:24px 22px 60px}
+  .pane .close{position:sticky;top:0;float:right;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 10px;cursor:pointer;font-family:'Barlow Condensed';font-weight:600;z-index:3}
+  .rv{margin:0 0 10px}
+  .rv .k{font-family:'Barlow Condensed';font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .rv .v{white-space:pre-wrap}
+  .rv .v.empty{color:var(--dim)}
+  .sec-title{display:flex;gap:10px;align-items:baseline;border-bottom:1px solid var(--border);margin:22px 0 12px;padding-bottom:6px}
+  .sec-title .num{font-family:'Anton';color:var(--accent);font-size:22px}
+  .tag{font-family:'Barlow Condensed';font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
+  .tag.ok{color:var(--ok)}.tag.bad{color:var(--bad)}.tag.warn{color:var(--warn)}
+  .alertas li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><div class="mark">I</div><div class="t">Estudio Ideamia<b>Panel de reportes</b></div></div>
+    <div style="display:flex;gap:8px;align-items:center"><a class='pill' href='/' target='_blank'>Formulario</a><button class="btn sm ghost" id="reload">Actualizar</button></div>
+  </div>
+
+  <div id="gate" class="card gate hidden">
+    <h2 style="margin-bottom:12px">Acceso</h2>
+    <label class="f"><span class="l">Clave</span><input type="password" id="pw" autocomplete="current-password"></label>
+    <button class="btn" id="enter" style="width:100%">Entrar</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="toolbar">
+      <select id="month"></select>
+      <span class="small muted" id="loadinfo"></span>
+    </div>
+    <div class="sum" id="sum"></div>
+    <div id="alertas"></div>
+    <div class="grid-wrap"><table class="st" id="grid"></table></div>
+    <div class="legend">
+      <span><i style="background:var(--ok)"></i>Entregado a tiempo</span>
+      <span><i style="background:var(--warn)"></i>Entregado tarde</span>
+      <span><i style="background:var(--bad)"></i>Atrasado, sin entregar</span>
+      <span><i style="border:1px dashed var(--border2)"></i>Pendiente, todavía en plazo</span>
+    </div>
+    <div class="small muted" style="margin-top:16px">Vencimiento semanal: <span id="dl"></span>. Mensual: día <span id="dlm"></span> del mes siguiente. Se puede hacer clic en cualquier reporte entregado para ver el detalle y la comparativa.</div>
+  </div>
+  <div id="err" class="errbox hidden"></div>
+</div>
+<div id="modal" class="hidden"></div>
+
+<script>
+(function(){
+  const C=window.IDEAMIA_CONFIG, U=window.IDX, FORMS=window.FORMS;
+  const $=s=>document.querySelector(s);
+  const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  { const DN=["","lunes","martes","miércoles","jueves","viernes","sábado","domingo"]; const dl=C.DEADLINE||{}; const f=(t)=>dl[t]?`${DN[dl[t].dia]||"lunes"} ${dl[t].hora} h`:`lunes ${C.DEADLINE_HOUR} h`; $("#dl").textContent=`CM ${f("cm")} · Social Media ${f("sm")}`; } $("#dlm").textContent=C.MONTHLY_DEADLINE_DAY;
+
+  // ---- acceso ----
+  const okPw = () => { try{ return localStorage.getItem("ideamia-panel")===C.PANEL_PASSWORD; }catch(e){ return false; } };
+  function gate(){
+    if(okPw()){ $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden"); init(); }
+    else { $("#gate").classList.remove("hidden"); }
+  }
+  $("#enter").addEventListener("click",()=>{ if($("#pw").value===C.PANEL_PASSWORD){ try{localStorage.setItem("ideamia-panel",C.PANEL_PASSWORD);}catch(e){} gate(); } else $("#pw").classList.add("invalid"); });
+  $("#pw").addEventListener("keydown",e=>{ if(e.key==="Enter") $("#enter").click(); });
+
+  // ---- datos ----
+  let reports=[], idx={}, month=null;
+  async function init(){
+    $("#loadinfo").textContent="Cargando…";
+    try{
+      await U.loadCatalog();
+      reports = await U.loadReports(); idx=U.indexReports(reports);
+      $("#err").classList.add("hidden");
+      $("#loadinfo").textContent=`${reports.length} reportes · actualizado ${new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}`;
+    }catch(e){
+      $("#err").classList.remove("hidden");
+      $("#err").innerHTML=`<b>No se pudo leer el Google Sheet.</b> Verificá que el Sheet esté compartido como "Cualquier persona con el enlace puede ver" y que el ID en config.js sea correcto. (${esc(e.message)})`;
+      $("#loadinfo").textContent="";
+    }
+    renderMonths(); render();
+  }
+  $("#reload").addEventListener("click",init);
+
+  function renderMonths(){
+    const today=new Date(); const opts=[];
+    const desde = C.MENSUAL_DESDE || "0000-00";
+    for(let i=0;i<240;i++){ const d=new Date(today.getFullYear(),today.getMonth()-i,1); const id=`${d.getFullYear()}-${U.pad(d.getMonth()+1)}`; if(id<desde && i>0) break; opts.push(U.monthFromId(id)); }
+    if(!month) month=opts[0].id;
+    $("#month").innerHTML=opts.map(o=>`<option value="${o.id}" ${o.id===month?"selected":""}>${o.label}</option>`).join("");
+  }
+  $("#month").addEventListener("change",e=>{ month=e.target.value; render(); });
+
+  // Estado de una celda
+  function status(tipo, slug, perId){
+    const r = idx[`${tipo}|${slug}|${perId}`];
+    const now=new Date();
+    const deadline = tipo==="mensual" ? U.monthDeadline(perId) : U.weekDeadline(perId, tipo);
+    const periodEnd = tipo==="mensual" ? (()=>{const [y,m]=perId.split("-").map(Number); return new Date(y,m,1);})() : U.addDays(U.parseISO(perId),7);
+    if(r){ const sent=new Date(r.enviado_en); return { s: (isNaN(sent)||sent<=deadline) ? "ok":"late", r, deadline }; }
+    const desde = tipo==="mensual" ? C.MENSUAL_DESDE : C.SEMANAL_DESDE;
+    if(desde && perId < desde) return { s:"na", deadline };
+    if(now < periodEnd) return { s:"na", deadline };
+    if(now <= deadline) return { s:"wait", deadline };
+    return { s:"miss", deadline };
+  }
+  const LABEL={ok:"✓",late:"✓ tarde",miss:"falta",wait:"en plazo",na:"·"};
+
+  function render(){
+    const weeks=U.weeksInMonth(month);
+    const cells=[]; // para resumen
+    let h=`<thead><tr><th>Marca</th>${weeks.map(w=>`<th>Semana ${w.label}<br><span style="font-weight:400;letter-spacing:0;text-transform:none">SM · CM</span></th>`).join("")}<th>Mensual</th></tr></thead><tbody>`;
+    for(const m of C.MARCAS){
+      const resp=C.RESPONSABLES[m.sm]?.nombre||m.sm, respCM=C.RESPONSABLES[U.cmDe(m)]?.nombre||"CM";
+      h+=`<tr><td><span class="bn">${esc(m.nombre)}</span><span class="br">SM ${esc(resp)} · CM ${esc(respCM)}</span></td>`;
+      for(const w of weeks){
+        const a=status("sm",m.slug,w.id), b=status("cm",m.slug,w.id);
+        cells.push({tipo:"sm",m,per:w,st:a},{tipo:"cm",m,per:w,st:b});
+        h+=`<td><div class="cell"><span class="chip ${a.s}" data-open="sm|${m.slug}|${w.id}" title="Social Media · ${resp}">SM ${LABEL[a.s]}</span><span class="chip ${b.s}" data-open="cm|${m.slug}|${w.id}" title="Community Manager · ${respCM}">CM ${LABEL[b.s]}</span></div></td>`;
+      }
+      const mm=status("mensual",m.slug,month); cells.push({tipo:"mensual",m,per:U.monthFromId(month),st:mm});
+      h+=`<td><span class="chip ${mm.s}" data-open="mensual|${m.slug}|${month}">MES ${LABEL[mm.s]}</span></td></tr>`;
+    }
+    $("#grid").innerHTML=h+"</tbody>";
+    renderPeriodicos();
+    $("#grid").querySelectorAll("[data-open]").forEach(el=>{ if(el.classList.contains("ok")||el.classList.contains("late")) el.addEventListener("click",()=>openDetail(el.dataset.open)); });
+    renderSummary(cells);
+  }
+
+  function renderPeriodicos(){
+    let box=document.getElementById("periodicos");
+    if(!box){ box=document.createElement("div"); box.id="periodicos"; box.style.marginTop="24px"; $(".grid-wrap").after(box); }
+    const list=reports.filter(r=>r.tipo==="periodico").sort((a,b)=>(b.enviado_en||"").localeCompare(a.enviado_en||""));
+    if(!list.length){ box.innerHTML=""; return; }
+    box.innerHTML=`<div class="card"><h2 style="margin-bottom:10px">Reportes trimestrales, semestrales y anuales</h2><table class="t"><thead><tr><th>Marca</th><th>Período</th><th>Cargó</th><th>Enviado</th><th></th></tr></thead><tbody>${list.map(r=>{ const sent=new Date(r.enviado_en); const key=`periodico|${r.marca_slug}|${r.periodo_id}`; return `<tr><td><b>${esc(r.marca)}</b></td><td>${esc(r.periodo_label)}</td><td>${esc(r.responsable)}</td><td class="muted">${isNaN(sent)?"":sent.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"2-digit"})}</td><td style="white-space:nowrap"><span class="chip ok" data-open="${key}">Detalle</span> <a class="btn sm" href="presentacion.html?marca=${encodeURIComponent(r.marca_slug)}&periodo=${encodeURIComponent(r.periodo_id)}" target="_blank">Presentación</a></td></tr>`; }).join("")}</tbody></table></div>`;
+    box.querySelectorAll("[data-open]").forEach(el=>el.addEventListener("click",()=>openDetail(el.dataset.open)));
+  }
+  function renderSummary(cells){
+    const miss=cells.filter(c=>c.st.s==="miss"), late=cells.filter(c=>c.st.s==="late"), ok=cells.filter(c=>c.st.s==="ok"), wait=cells.filter(c=>c.st.s==="wait");
+    const due=ok.length+late.length+miss.length;
+    const byResp={};
+    const whoOf = c => c.tipo==="cm" ? (C.RESPONSABLES[U.cmDe(c.m)]?.nombre||"CM") : (C.RESPONSABLES[c.m.sm]?.nombre||c.m.sm);
+    for(const c of cells){ const who = whoOf(c); const o=byResp[who]??={ok:0,late:0,miss:0}; if(o[c.st.s]!=null) o[c.st.s]++; }
+    $("#sum").innerHTML = [
+      {k:"Cumplimiento del mes", v: due? Math.round(ok.length/due*100)+" %":"–", d:`${ok.length} a tiempo de ${due} vencidos`},
+      {k:"Sin entregar (vencidos)", v: miss.length, d: miss.length?"Requieren seguimiento":"Todo al día", cls: miss.length?"down":"up"},
+      {k:"Entregados tarde", v: late.length, d:"Después del vencimiento"},
+      {k:"En plazo, pendientes", v: wait.length, d:"Vencen este lunes"}
+    ].map(x=>`<div class="kpi"><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="d ${x.cls||""}">${x.d}</div></div>`).join("")
+    + Object.entries(byResp).map(([who,o])=>{ const t=o.ok+o.late+o.miss; return `<div class="kpi"><div class="k">${esc(who)}</div><div class="v">${t?Math.round(o.ok/t*100)+" %":"–"}</div><div class="d">${o.ok} a tiempo · ${o.late} tarde · <span style="color:${o.miss?'var(--bad)':'inherit'}">${o.miss} sin entregar</span></div></div>`; }).join("");
+    // alertas
+    const al=$("#alertas");
+    if(miss.length){
+      const g={}; for(const c of miss){ const who=whoOf(c); (g[who]??=[]).push(c); }
+      al.innerHTML=`<div class="errbox"><b>Faltan ${miss.length} reportes vencidos</b><ul class="alertas">${Object.entries(g).map(([who,list])=>`<li><b>${esc(who)}</b> (${list.length}): ${list.map(c=>`${esc(c.m.nombre)} ${c.tipo==="mensual"?"mensual":c.tipo.toUpperCase()} ${esc(c.per.label)}`).join(" · ")}</li>`).join("")}</ul></div>`;
+    } else al.innerHTML="";
+  }
+
+  // ---- detalle ----
+  function kpi(k,cur,prev,fmt=U.fmt){
+    const p=U.pct(cur,prev); const cls=p==null?"":p>=0?"up":"down";
+    return `<div class="kpi"><div class="k">${k}</div><div class="v">${fmt(cur)}</div><div class="d ${cls}">${prev==null?"sin dato anterior":`${U.fmtPct(p)} vs. ${fmt(prev)}`}</div></div>`;
+  }
+  function openDetail(key){
+    const r=idx[key]; if(!r) return;
+    const [tipo,slug,per]=key.split("|"); const d=Object.assign({}, r.datos||{}, {_canal: !!(r.datos||{}).canal_movido}); const S=FORMS[tipo];
+    const st=status(tipo,slug,per);
+    let top="";
+    if(tipo==="sm"){
+      const p=idx[`sm|${slug}|${U.prevWeekId(per)}`]?.datos;
+      const net=x=>x?U.num(x.seg_sumados)-U.num(x.seg_perdidos):null;
+      top=`<div class="kpis" style="margin:14px 0 4px">${kpi("Alcance total",U.num(d.alcance_total),p?U.num(p.alcance_total):null)}${kpi("Seguidores netos",net(d),net(p))}${kpi("Interacciones",U.num(d.interacciones),p?U.num(p.interacciones):null)}${kpi("Alcance no seg.",U.num(d.alcance_noseg),p?U.num(p.alcance_noseg):null)}${kpi("Reels",U.num(d.reels_n),p?U.num(p.reels_n):null)}</div><div class="small muted">Comparativa contra la semana ${p?esc(idx[`sm|${slug}|${U.prevWeekId(per)}`].periodo_label):"anterior (sin reporte cargado)"}</div>`;
+      // objetivos de reels
+      const rl=[]; for(let i=1;i<=Number(d.reels_n||0);i++){ const pv=Array.isArray(d[`reel${i}_portada`])&&d[`reel${i}_portada`][0]; const lk=String(d[`reel${i}_link`]||"").trim(); const okl=/^https?:\/\/\S+$/i.test(lk); rl.push(`<tr><td style="white-space:nowrap">${pv?`<a href="${okl?esc(lk):esc(pv.url)}" target="_blank" rel="noopener"><img src="${esc(pv.url)}" alt="" style="width:36px;height:48px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:8px;border:1px solid var(--border2)"></a>`:""}${esc(d[`reel${i}_nombre`])}${okl?` <a href="${esc(lk)}" target="_blank" rel="noopener" title="Ver en Instagram" style="color:var(--accent);text-decoration:none">↗</a>`:""}</td><td>${U.fmt(U.num(d[`reel${i}_res_views`]))} <span class="muted">/ ${U.fmt(U.num(d[`reel${i}_obj_views`]))}</span></td><td>${U.fmt(U.num(d[`reel${i}_res_mg`]))} <span class="muted">/ ${U.fmt(U.num(d[`reel${i}_obj_mg`]))}</span></td><td>${U.fmt(U.num(d[`reel${i}_res_guard`]))}</td><td>${U.fmt(U.num(d[`reel${i}_res_comp`]))}</td><td><span class="tag ${d[`reel${i}_alcanzado`]==="Sí"?"ok":d[`reel${i}_alcanzado`]==="No"?"bad":"warn"}">${esc(d[`reel${i}_alcanzado`]||"–")}</span></td></tr>`); }
+      if(rl.length) top+=`<table class="t" style="margin-top:14px"><thead><tr><th>Reel</th><th>Views / obj.</th><th>MG / obj.</th><th>Guard.</th><th>Compart.</th><th>Objetivo</th></tr></thead><tbody>${rl.join("")}</tbody></table>`;
+    }
+    if(tipo==="mensual"){
+      const p=idx[`mensual|${slug}|${U.prevMonthId(per)}`]?.datos;
+      const net=x=>x?U.num(x.seg_sumados)-U.num(x.seg_perdidos):null;
+      const conv=x=>{ if(!x) return null; const a=U.num(x.m_alc_total), n=net(x); return (a&&n!=null)? n/a*100 : null; };
+      const fp=v=>v==null?"–":v.toFixed(2).replace(".",",")+" %";
+      top=`<div class="kpis" style="margin:14px 0 4px">${kpi("Alcance total",U.num(d.m_alc_total),p?U.num(p.m_alc_total):null)}${kpi("Seguidores netos",net(d),net(p))}${kpi("Interacciones",U.num(d.m_inter),p?U.num(p.m_inter):null)}${kpi("Contactos nuevos",U.num(d.m_contactos),p?U.num(p.m_contactos):null)}${kpi("Conversión alcance → seg.",conv(d),conv(p),fp)}${kpi("Visualizaciones",U.num(d.m_views),p?U.num(p.m_views):null)}</div><div class="small muted">Comparativa contra ${p?esc(idx[`mensual|${slug}|${U.prevMonthId(per)}`].periodo_label):"el mes anterior (sin reporte cargado)"}</div>`;
+    }
+    if(tipo==="cm"){
+      top=`<div class="kpis" style="margin:14px 0 4px"><div class="kpi"><div class="k">Mensajes</div><div class="v">${U.fmt(U.num(d.msg_total))}</div></div><div class="kpi"><div class="k">Comentarios</div><div class="v">${U.fmt(U.num(d.msg_comentarios))}</div></div><div class="kpi"><div class="k">Calendario</div><div class="v" style="font-size:18px">${esc(d.cal_todo||"–")}</div></div><div class="kpi"><div class="k">Sin responder</div><div class="v" style="font-size:18px">${esc(d.msg_sin_resp||"–")}</div></div></div>`;
+    }
+    // correcciones (versiones anteriores + motivo + campos cambiados)
+    let cambios="";
+    if(r.versiones && r.versiones.length){
+      const labelOf=(tipo,id)=>{ let found=null; const visit=f=>{ if(found) return; if(f.type==="row") f.fields.forEach(visit); else if(f.type==="repeat"){ for(let i=1;i<=9;i++) f.item(i).forEach(visit); } else if(f.id===id) found=f; }; (FORMS[tipo]||FORMS.sm).secciones.forEach(sc=>sc.fields.forEach(visit)); return found?found.label:id; };
+      const chain=[...r.versiones, r];
+      for(let i=1;i<chain.length;i++){ const a=chain[i-1].datos||{}, b=chain[i].datos||{}; const keys=[...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>!k.startsWith("_")&&!/_diag$|^diag_|^edicion_motivo$|_fotos$/.test(k)&&JSON.stringify(a[k])!==JSON.stringify(b[k])); const sent2=new Date(chain[i].enviado_en);
+        cambios+=`<div class="rv diag" style="border-color:rgba(255,180,84,.5);background:rgba(255,180,84,.06);margin:10px 0"><div class="diag-head" style="color:var(--warn)"><span>Corrección v${i+1} · ${isNaN(sent2)?"":sent2.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})} · ${esc(chain[i].responsable)}</span></div><div style="margin-bottom:6px"><b>Motivo:</b> ${esc(b.edicion_motivo||"(sin motivo registrado)")}</div>${keys.length?`<table class="t"><thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead><tbody>${keys.map(k=>`<tr><td>${esc(labelOf(r.tipo,k))}</td><td class="muted">${esc(Array.isArray(a[k])?a[k].join(" · "):(a[k]??"–"))}</td><td><b>${esc(Array.isArray(b[k])?b[k].join(" · "):(b[k]??"–"))}</b></td></tr>`).join("")}</tbody></table>`:'<div class="small muted">Sin cambios en los campos (solo reenvío).</div>'}</div>`; }
+    }
+    // cuerpo por secciones
+    let body="";
+    for(const sec of S.secciones){
+      let rows="";
+      const okUrl = u => /^https?:\/\/\S+$/i.test(String(u||"").trim());
+      const walk=(f,pre)=>{
+        if(f.type==="row"){ f.fields.forEach(x=>walk(x,pre)); return; }
+        if(f.type==="sublabel"||f.type==="okrprev") return;
+        const iaBox = arr => { const it=arr.filter(p=>p&&p.ia); return it.length?`<div class="rv diag" style="margin:8px 0"><div class="diag-head"><span>Devolución de la IA</span></div>${it.map(p=>`<div class="small" style="margin:4px 0;white-space:pre-line">${esc(p.ia)}</div>`).join("")}</div>`:""; };
+        if(f.type==="repeat"){ const n=Number(d[f.countField]||0); for(let i=1;i<=n;i++){ rows+=`<div class="lbl" style="margin:12px 0 6px;color:var(--accent)">${esc(f.title(i))}</div>`; f.item(i).forEach(x=>walk(x,"")); } return; }
+        if(f.type==="fotos"&&f.cover){ const arr=Array.isArray(d[f.id])?d[f.id]:[]; const link=d[f.id.replace(/_portada$/,"_link")]; if(arr.length||okUrl(link)) rows+=`<div class="rv"><div class="k">Publicación</div><div class="postcard">${arr.length?`<a href="${okUrl(link)?esc(String(link).trim()):esc(arr[0].url)}" target="_blank" rel="noopener"><img src="${esc(arr[0].url)}" loading="lazy" alt=""></a>`:""}${okUrl(link)?`<a class="btn sm" href="${esc(String(link).trim())}" target="_blank" rel="noopener">Ver en Instagram ↗</a>`:""}</div></div>`+iaBox(arr); return; }
+        if(f.type==="url"){ if(/^(reel|pub)\d+_link$/.test(f.id)) return; /* ya va en la tarjeta de la portada */ if(okUrl(d[f.id])) rows+=`<div class="rv"><div class="k">${esc(f.label)}</div><a class="btn sm ghost" href="${esc(String(d[f.id]).trim())}" target="_blank" rel="noopener">Ver en Instagram ↗</a></div>`; return; }
+        if(f.type==="fotos"){ const arr=Array.isArray(d[f.id])?d[f.id]:[]; if(arr.length) rows+=`<div class="rv"><div class="k">${esc(f.label)}</div><div class="fotos">${arr.map(p=>`<a class="foto" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.url)}" loading="lazy" alt=""></a>`).join("")}</div></div>`+iaBox(arr); return; }
+        if(f.type==="diag"){ const dg = f.target==="reel" ? d[`reel${f.i}_diag`] : f.target==="pub" ? d[`pub${f.i}_diag`] : d.diag_semana; if(dg) rows+=`<div class="rv diag" style="margin:8px 0"><div class="diag-head"><span>${f.target==="semana"?"Lectura automática de la semana":"Diagnóstico automático"}</span></div><div class="small">${esc(dg)}</div></div>`; return; }
+        if(f.type==="table"||f.type==="list"){
+          const trs=[]; for(let r=1;r<=f.rows;r++){ const has=f.cols.some(c=>d[`${f.id}_${r}_${c.id}`]); if(!has) continue; trs.push(`<tr><td class="muted">${r}</td>${f.cols.map(c=>{ const v=d[`${f.id}_${r}_${c.id}`]||""; return `<td>${c.t==="url"&&okUrl(v)?`<a href="${esc(String(v).trim())}" target="_blank" rel="noopener">Ver ↗</a>`:esc(v)}</td>`; }).join("")}</tr>`); }
+          if(trs.length) rows+=`<div class="rv"><div class="k">${esc(f.label)}</div><table class="t"><thead><tr><th>#</th>${f.cols.map(c=>`<th>${esc(c.l)}</th>`).join("")}</tr></thead><tbody>${trs.join("")}</tbody></table></div>`;
+          return;
+        }
+        if(f.showIf && !f.showIf(d)) return;
+        if(f.type==="logo"){ if(d[f.id]) rows+=`<div class="rv"><div class="k">${esc(f.label)}</div><img src="${esc(d[f.id])}" style="height:40px;background:#fff;border-radius:4px;padding:3px"></div>`; return; }
+        let v=d[f.id]; if(f.type==="confirm") v = v ? (d[f.id+"_en"] ? "Sí · "+new Date(d[f.id+"_en"]).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "Sí") : ""; if(Array.isArray(v)) v=v.join(" · ");
+        if(f.type==="number") v = v==null||v===""? "" : U.fmt(U.num(v));
+        rows+=`<div class="rv"><div class="k">${esc(f.label)}</div><div class="v ${v?"":"empty"}">${v?esc(v):"–"}</div></div>`;
+      };
+      sec.fields.forEach(f=>walk(f,""));
+      body+=`<div class="sec-title"><span class="num">${sec.num}</span><h3 style="color:var(--text)">${esc(sec.titulo)}</h3></div>${rows}`;
+    }
+    const sent=new Date(r.enviado_en);
+    $("#modal").className="modal";
+    $("#modal").innerHTML=`<div class="pane"><button class="close" id="close">Cerrar ✕</button>
+      <span class="pill ${st.s==="ok"?"ok":"warn"}">${st.s==="ok"?"Entregado a tiempo":"Entregado tarde"}</span>${r.version>1?` <span class="pill warn">corregido · v${r.version}</span>`:""} <button class="btn sm ghost" id="delRep" style="margin-left:8px;border-color:rgba(255,107,107,.5);color:var(--bad)">Eliminar reporte</button>
+      <h2 style="margin:10px 0 2px">${esc(r.marca)}</h2>
+      <div class="muted">${esc(S.titulo)} · ${esc(r.periodo_label)} · cargó ${esc(r.responsable)} el ${isNaN(sent)?esc(r.enviado_en):sent.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>
+      ${cambios}${top}${body}</div>`;
+    $("#close").addEventListener("click",()=>{ $("#modal").className="hidden"; $("#modal").innerHTML=""; });
+    $("#delRep").addEventListener("click",async()=>{
+      if(!confirm(`¿Eliminar este reporte de ${r.marca} (${r.periodo_label})?\n\nDeja de verse en el panel y en el formulario; la fila queda en la planilla como respaldo.`)) return;
+      $("#delRep").disabled=true; $("#delRep").textContent="Eliminando…";
+      try{ await U.eliminarReporte(r,"Joaquín"); $("#modal").className="hidden"; $("#modal").innerHTML=""; reports=reports.filter(x=>x!==r); idx=U.indexReports(reports); render(); }
+      catch(e){ $("#delRep").disabled=false; $("#delRep").textContent="Eliminar reporte"; alert("No se pudo eliminar: "+e.message); }
+    });
+    $("#modal").addEventListener("click",e=>{ if(e.target.id==="modal"){ $("#modal").className="hidden"; $("#modal").innerHTML=""; } });
+  }
+
+  gate();
+})();
+</script>
+</body>
+</html>
