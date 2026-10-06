@@ -14,11 +14,13 @@
 </head>
 <body>
 <div class="wrap">
-  <header class="hero">
-    <div class="hero-top"><span>Estudio Ideamia ✺ Sistema de reportes</span><span class="pill" id="who"></span></div>
-    <h1 class="wordmark"><span class="thin">Reportes</span><span class="heavy">Ideamia</span></h1>
-  </header>
-  <div class="marquee" aria-hidden="true"><div class="track"><span>Social Media<i>✺</i>Community Manager<i>✺</i>Métricas que cuentan<i>✺</i>Contenido que funciona<i>✺</i>Aprender y escalar<i>✺</i></span><span>Social Media<i>✺</i>Community Manager<i>✺</i>Métricas que cuentan<i>✺</i>Contenido que funciona<i>✺</i>Aprender y escalar<i>✺</i></span></div></div>
+  <header class="site-head"><a class="logo" href="./">Idea<b>mia</b></a><span class="pill" id="who"></span><span class="progress" id="progress"></span></header>
+  <section class="hero">
+    <div class="puzzle" aria-hidden="true"><svg viewBox="0 0 300 260"><defs><path id="pz" d="M20 20 H42 C40 12 44 6 50 6 C56 6 60 12 58 20 H80 V42 C88 40 94 44 94 50 C94 56 88 60 80 58 V80 H58 C60 88 56 94 50 94 C44 94 40 88 42 80 H20 V58 C12 60 6 56 6 50 C6 44 12 40 20 42 Z"/></defs><g class="p p1" style="--r:-14deg"><g transform="translate(150 20) scale(1.25)"><use href="#pz" fill="#8F8F8F" transform="translate(0 9)"/><use href="#pz" fill="#E9E9E9"/></g></g><g class="p p2" style="--r:18deg"><g transform="translate(40 110) scale(1.05)"><use href="#pz" fill="#B3A900" transform="translate(0 9)"/><use href="#pz" fill="#FFF200"/></g></g><g class="p p3" style="--r:-6deg"><g transform="translate(175 150) scale(.9)"><use href="#pz" fill="#262626" transform="translate(0 8)"/><use href="#pz" fill="#4A4A4A"/></g></g></svg></div>
+    <div class="kicker">— Estudio creativo · Sistema de reportes</div>
+    <h1 class="wordmark"><span class="thin">Reportes</span><span class="heavy">de <b>redes</b></span></h1>
+    <p class="lead">Las marcas no se construyen de una sola vez. <strong>Se construyen pieza por pieza</strong>, y cada reporte es una.</p>
+  </section>
 
   <div class="seg" id="nav" style="margin-bottom:18px"><label><input type="radio" name="nav" value="nuevo" checked><span>Nuevo reporte</span></label><label><input type="radio" name="nav" value="historial"><span>Reportes anteriores</span></label></div>
 
@@ -82,6 +84,7 @@
     tiposDisponibles = (resp && U.isCM(resp)) ? ["cm"] : resp ? ["sm","mensual","periodico"] : ["sm","cm","mensual","periodico"];
     if(!tiposDisponibles.includes(tipo)) tipo = tiposDisponibles[0];
     $("#who").innerHTML = (isProject ? "Project · Joaquín" : resp ? `${esc(C.RESPONSABLES[resp].nombre)} · ${esc(C.RESPONSABLES[resp].rol)}` : "Equipo Ideamia") + ((isProject||resp) ? ` <a href="#" id="logout" style="margin-left:8px;color:var(--muted);text-decoration:none" title="Cambiar de usuario">✕</a>` : "");
+    document.body.classList.toggle("compact", isProject || !!resp); // portada chica para quien ya entró: el formulario queda a mano
     if($("#logout")) $("#logout").addEventListener("click",e=>{ e.preventDefault(); try{ localStorage.removeItem("ideamia-user"); }catch(x){} location.href = location.pathname; });
   }
   const identified = () => isProject || !!resp;
@@ -409,7 +412,7 @@
   function renderForm(){
     const S = FORMS[tipo];
     $("#form").innerHTML = S.secciones.map(sec=>`<section class="section card" data-sec="${sec.num}">
-      <div class="section-head"><span class="num">${sec.num}</span><h2>${esc(sec.titulo)}</h2>${sec.hint?`<span class="hint">${esc(sec.hint)}</span>`:""}</div>
+      <div class="section-head"><span class="num">${String(sec.num).padStart(2,"0")}</span><h2>${esc(sec.titulo)}</h2>${sec.hint?`<span class="hint">${esc(sec.hint)}</span>`:""}</div>
       ${renderRef(sec)}
       ${compareHTML(sec)}
       ${sec.fields.map(renderField).join("")}

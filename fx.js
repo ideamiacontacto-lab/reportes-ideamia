@@ -1,6 +1,10 @@
 // Movimiento medido: las tarjetas y secciones aparecen suavemente al entrar en pantalla.
 // El formulario se vuelve a dibujar seguido (cada clic, cada captura): una sección que ya apareció no vuelve a animarse.
 (function(){
+  // barra amarilla de progreso bajo el encabezado (como en ideamia.es)
+  const prog = () => { const b=document.getElementById("progress"); if(!b) return; const h=document.documentElement; const max=h.scrollHeight-h.clientHeight; b.style.width = (max>0 ? Math.min(100, h.scrollTop/max*100) : 0) + "%"; };
+  addEventListener("scroll", prog, {passive:true}); addEventListener("resize", prog);
+  document.addEventListener("DOMContentLoaded", prog);
   const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(reduce || !("IntersectionObserver" in window)) return;
   const vistos = new Set();
