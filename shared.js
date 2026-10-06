@@ -245,7 +245,7 @@
   function mesDe(r){
     const p = r.periodo_id||"";
     if(r.tipo==="mensual") return p;
-    if(r.tipo==="periodico") return p.split("+")[0];
+    if(r.tipo==="periodico" && window.PERIODICO && p.includes("+")) return window.PERIODICO.parsePeriod(p).fin; // el trimestre va en la carpeta del mes en que termina
     return p.slice(0,7);
   }
   // Marcas y responsables desde pestañas del Sheet ("Marcas": slug,nombre,sm,activa · "Responsables": slug,nombre,rol).
