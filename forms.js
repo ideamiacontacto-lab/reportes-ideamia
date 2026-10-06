@@ -75,7 +75,7 @@
           seg(`pub${i}_pilar`,"Tipo de contenido",PILARES,{help:"Un clic. Con esto el mensual arma solo qué tipo de contenido rinde más."}),
           cuando(`pub${i}`),
           { type:"sublabel", text:"Objetivo cuantitativo" },
-          row("g3",[ n(`pub${i}_obj_views`,"Visualizaciones",{req:true}), n(`pub${i}_obj_mg`,"MG",{req:true}), n(`pub${i}_obj_guard`,"Guardados") ]),
+          row("g5",[ n(`pub${i}_obj_views`,"Visualizaciones",{req:true}), n(`pub${i}_obj_mg`,"MG",{req:true}), n(`pub${i}_obj_com`,"Comentarios"), n(`pub${i}_obj_comp`,"Compartidos"), n(`pub${i}_obj_guard`,"Guardados") ]),
           { type:"sublabel", text:"Resultados" },
           row("g5",[ n(`pub${i}_res_views`,"Visualizaciones",{req:true}), n(`pub${i}_res_mg`,"MG",{req:true}), n(`pub${i}_res_guard`,"Guardados",{req:true}), n(`pub${i}_res_com`,"Comentarios",{req:true}), n(`pub${i}_res_comp`,"Compartidos",{req:true}) ]),
           row("g3",[ n(`pub${i}_nuevos_seg`,"Seguidores que generó",{help:"Estadísticas de la publicación → Seguimientos"}), n(`pub${i}_alcance`,"Cuentas alcanzadas"), n(`pub${i}_visitas`,"Visitas al perfil") ]),

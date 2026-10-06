@@ -72,7 +72,7 @@
     for(const {mid,r} of meses){ if(!r) continue; const d=r.datos||{}; const mesN=U.MESES_C[Number(mid.split("-")[1])-1];
       for(const k of ["camp1","camp2"]){ if(d[`${k}_ejec`]==="Sí") out.campanias.push({ nivel:k==="camp1"?"1":"2", nombre:d[`${k}_nombre`], cumple:d[`${k}_min`], texto:d[`${k}_concl`], pieza:d[`${k}_reel`]||d[`${k}_pub`], mes:mesN }); }
       for(let i=1;i<=5;i++){ if(d[`rk_reel_${i}_desc`]) out.reels.push({ desc:d[`rk_reel_${i}_desc`], fecha:d[`rk_reel_${i}_fecha`]||mesN, views:d[`rk_reel_${i}_views`], views_pauta:d[`rk_reel_${i}_views_pauta`], mg:d[`rk_reel_${i}_mg`], guard:d[`rk_reel_${i}_guard`], com:d[`rk_reel_${i}_com`], comp:d[`rk_reel_${i}_comp`], seg:d[`rk_reel_${i}_seg`], link:d[`rk_reel_${i}_link`] }); }
-      for(let i=1;i<=4;i++){ if(d[`rk_feed_${i}_desc`]) out.feed.push({ desc:d[`rk_feed_${i}_desc`], fecha:d[`rk_feed_${i}_fecha`]||mesN, alc:d[`rk_feed_${i}_alc`], mg:d[`rk_feed_${i}_mg`], com:d[`rk_feed_${i}_com`], seg:d[`rk_feed_${i}_seg`], link:d[`rk_feed_${i}_link`] }); }
+      for(let i=1;i<=4;i++){ if(d[`rk_feed_${i}_desc`]) out.feed.push({ desc:d[`rk_feed_${i}_desc`], fecha:d[`rk_feed_${i}_fecha`]||mesN, alc:d[`rk_feed_${i}_alc`], mg:d[`rk_feed_${i}_mg`], com:d[`rk_feed_${i}_com`], comp:d[`rk_feed_${i}_comp`], seg:d[`rk_feed_${i}_seg`], link:d[`rk_feed_${i}_link`] }); }
     }
     out.reels.sort((a,b)=>(num(b.views)||0)-(num(a.views)||0));
     out.feed.sort((a,b)=>(num(b.mg)||0)-(num(a.mg)||0));
@@ -155,7 +155,7 @@
       { num:6, titulo:"Análisis de contenido", ref:"contenido", fields:[
         rank("rk","Ranking de reels, de mejor a peor",[{id:"desc",l:"Reel",w:2},{id:"fecha",l:"Fecha"},{id:"views",l:"Views totales",t:"number"},{id:"views_org",l:"Views orgánicas",t:"number"},{id:"mg",l:"Me gusta",t:"number"},{id:"com",l:"Comentarios",t:"number"},{id:"comp",l:"Compartidos",t:"number"},{id:"guard",l:"Guardados",t:"number"},{id:"seg",l:"Seguidores generados",t:"number"},{id:"link",l:"Enlace",t:"url",w:2}],6,"Reel"),
         ta("rk_lectura","Qué funcionó en reels",{req:true}),
-        rank("fd","Mejores publicaciones de feed",[{id:"desc",l:"Publicación",w:2},{id:"tipo",l:"Tipo (carrusel, foto, diseño...)"},{id:"views",l:"Views o alcance",t:"number"},{id:"mg",l:"Me gusta",t:"number"},{id:"com",l:"Comentarios",t:"number"},{id:"seg",l:"Seguidores generados",t:"number"},{id:"link",l:"Enlace",t:"url",w:2}],3,"Publicación"),
+        rank("fd","Mejores publicaciones de feed",[{id:"desc",l:"Publicación",w:2},{id:"tipo",l:"Tipo (carrusel, foto, diseño...)"},{id:"views",l:"Views o alcance",t:"number"},{id:"mg",l:"Me gusta",t:"number"},{id:"com",l:"Comentarios",t:"number"},{id:"comp",l:"Compartidos",t:"number"},{id:"seg",l:"Seguidores generados",t:"number"},{id:"link",l:"Enlace",t:"url",w:2}],3,"Publicación"),
         ta("fd_lectura","Lectura del feed",{req:true}),
         rank("hs","Mejores historias",[{id:"desc",l:"Historia",w:2},{id:"views",l:"Views",t:"number"},{id:"clics",l:"Clics o respuestas",t:"number"}],3,"Historia"),
         ta("hs_lectura","Lectura de historias")

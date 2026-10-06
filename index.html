@@ -705,7 +705,7 @@
     const fillTable=(id,list,rows,map)=>{ if(Object.keys(vals).some(k=>/^[a-z]+_\d+_/.test(k)&&k.startsWith(id+"_")&&vals[k])) return; list.slice(0,rows).forEach((it,k)=>{ Object.entries(map(it)).forEach(([c,v])=>{ if(v!=null&&v!=="") vals[`${id}_${k+1}_${c}`]=String(v); }); }); };
     fillTable("camp",ag.campanias,4,c=>({nivel:c.nivel,nombre:c.nombre,cumple:c.cumple,pieza:c.pieza,texto:c.texto}));
     fillTable("rk",ag.reels,6,r=>({desc:r.desc,fecha:r.fecha,views:r.views,mg:r.mg,com:r.com,comp:r.comp,guard:r.guard,seg:r.seg,link:r.link}));
-    fillTable("fd",ag.feed,3,r=>({desc:r.desc,views:r.alc,mg:r.mg,com:r.com,seg:r.seg,link:r.link}));
+    fillTable("fd",ag.feed,3,r=>({desc:r.desc,views:r.alc,mg:r.mg,com:r.com,comp:r.comp,seg:r.seg,link:r.link}));
     const pp = P.parsePeriod(periodo); vals.mm_n = String(pp.n);
     pp.meses.forEach((mid,k)=>{ const r=k+1; vals[`mm_${r}_mes`] = `${U.MESES_C[Number(mid.split("-")[1])-1]} ${mid.split("-")[0]}`; const mr = idx[`mensual|${marca}|${mid}`]; if(mr){ const d=mr.datos||{}; const set=(c,v)=>{ if((vals[`mm_${r}_${c}`]==null||vals[`mm_${r}_${c}`]==="") && v!=null && v!=="") vals[`mm_${r}_${c}`]=String(v); }; set("alc",d.m_alc_total); set("views",d.m_views); set("netos",(U.num(d.seg_sumados)!=null)?U.num(d.seg_sumados)-(U.num(d.seg_perdidos)||0):""); set("inter",d.m_inter); set("cont",d.m_contactos); } });
     fillTable("okr",P.OKR_DEFAULT.map(o=>({obj:o})),6,o=>o);
