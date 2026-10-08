@@ -683,6 +683,7 @@
       else { const none = arr.filter(v=>!/^Ninguna/.test(v)); document.querySelectorAll(`input[name="${el.name}"]`).forEach(x=>{ if(/^Ninguna/.test(x.value)) x.checked=false; }); vals[el.name]=none; }
     } else if(el.type==="radio"){ if(el.checked) vals[el.name]=el.value; }
     else vals[el.name]=el.value;
+    if(el.name==="reels_n"||el.name==="feed_n") prefillObjetivos();
     el.classList.remove("invalid"); el.closest(".group")?.classList.remove("invalid");
     if(def && def.type==="url"){ const ok=!el.value.trim()||/^https?:\/\/\S+$/i.test(el.value.trim()); el.classList.toggle("invalid",!ok); }
     _defsCache=null;
@@ -695,6 +696,25 @@
     if(/^(okr_|p_)/.test(el.name)) refreshOkrPrev();
   }
 
+  // Objetivos de reels y publicaciones: se precargan con los del último reporte semanal de la marca (se pueden cambiar)
+  function prefillObjetivos(){
+    if(tipo!=="sm") return;
+    const prev = reports.filter(r=>r.tipo==="sm" && r.marca_slug===marca && r.periodo_id<periodo).sort((a,b)=>b.periodo_id.localeCompare(a.periodo_id))[0];
+    if(!prev) return; const d=prev.datos||{};
+    const tomar = (pre, n, campos) => { // primer objetivo cargado de ese tipo en la semana anterior
+      const out={}; for(const c of campos){ for(let k=1;k<=n;k++){ const v=d[`${pre}${k}_${c}`]; if(v!=null && v!==""){ out[c]=v; break; } } } return out; };
+    const oR = tomar("reel", Number(d.reels_n||0), ["obj_views","obj_mg","obj_com","obj_comp","obj_guard"]);
+    const oP = tomar("pub", Number(d.feed_n||0), ["obj_views","obj_mg","obj_com","obj_comp","obj_guard"]);
+    for(let i=1;i<=Number(vals.reels_n||0);i++) for(const [c,v] of Object.entries(oR)) if(vals[`reel${i}_${c}`]==null||vals[`reel${i}_${c}`]==="") vals[`reel${i}_${c}`]=String(v);
+    for(let i=1;i<=Number(vals.feed_n||0);i++) for(const [c,v] of Object.entries(oP)) if(vals[`pub${i}_${c}`]==null||vals[`pub${i}_${c}`]==="") vals[`pub${i}_${c}`]=String(v);
+  }
+  // "¿Se alcanzó el objetivo?" cuando no lo marcaron: se compara objetivo y resultado de views y me gusta
+  function calcAlcanzado(d, pre){
+    const n=v=>U.num(v); const pares=[[n(d[`${pre}_res_views`]),n(d[`${pre}_obj_views`])],[n(d[`${pre}_res_mg`]),n(d[`${pre}_obj_mg`])]].filter(([r,o])=>r!=null&&o);
+    if(!pares.length) return "";
+    const ok=pares.filter(([r,o])=>r>=o).length;
+    return ok===pares.length ? "Sí" : ok>0 ? "Parcialmente" : "No";
+  }
   function prefillMensual(){
     if(tipo!=="mensual") return;
     const weeks = U.weeksInMonth(periodo);
@@ -744,7 +764,7 @@
     if(!editMode && vals._edit_de && existing()) editMode=true;
     if(reportsLoaded && !existing() && vals._edit_de){ delete vals._edit_de; delete vals.edicion_motivo; editMode=false; }
     vals._canal = !!(C.MARCAS.find(x=>x.slug===marca)||{}).canal;
-    prefillMensual(); prefillPeriodico();
+    prefillMensual(); prefillPeriodico(); prefillObjetivos();
     renderForm();
     $("#errbox").classList.add("hidden");
     $("#doneView").classList.add("hidden"); $("#form").classList.remove("hidden"); $("#setup").classList.remove("hidden"); $("#bar").classList.remove("hidden");
@@ -797,6 +817,7 @@
     else { resumen=d.resumen_mes||""; alcance=U.num(d.m_alc_total); netos=U.num(d.seg_sumados)-U.num(d.seg_perdidos); inter=U.num(d.m_inter); }
     if(editMode) resumen = "(corregido) " + resumen;
     const datos={}; Object.entries(d).forEach(([k,v])=>{ if(!empty(v) && !k.startsWith("_")) datos[k]=v; });
+    if(tipo==="sm"){ for(let i=1;i<=Number(d.reels_n||0);i++) if(!datos[`reel${i}_alcanzado`]){ const a=calcAlcanzado(d,`reel${i}`); if(a) datos[`reel${i}_alcanzado`]=a; } for(let i=1;i<=Number(d.feed_n||0);i++) if(!datos[`pub${i}_alcanzado`]){ const a=calcAlcanzado(d,`pub${i}`); if(a) datos[`pub${i}_alcanzado`]=a; } }
     if(tipo==="sm" && window.ANALISIS){
       const base = window.ANALISIS.baselineReels(reports, marca, periodo);
       for(let i=1;i<=Number(d.reels_n||0);i++){ const r=window.ANALISIS.diagReel(d,i,base); if(r&&r.items&&r.items.length&&r.score!=null) datos[`reel${i}_diag`] = `${r.veredicto} ` + r.items.filter(x=>x.lvl!=="info").map(x=>`${x.k}: ${x.txt}`).join(" · "); }
