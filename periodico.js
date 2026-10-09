@@ -38,8 +38,8 @@
   function prevPeriodId(id){ const p=parsePeriod(id); const [y,m]=p.ini.split("-").map(Number); const d=new Date(y,m-1-p.n,1); return `${d.getFullYear()}-${U.pad(d.getMonth()+1)}+${p.n}`; }
   function nextMonths(id, k=4){ const p=parsePeriod(id); const [y,m]=p.fin.split("-").map(Number); const out=[]; for(let i=1;i<=k;i++){ const d=new Date(y,m-1+i,1); out.push({id:`${d.getFullYear()}-${U.pad(d.getMonth()+1)}`, nombre:U.MESES_C[d.getMonth()]}); } return out; }
   // Períodos calendario cerrados (trimestres desde ene/abr/jul/oct, semestres desde ene/jul, años desde ene), más reciente primero
-  function closedPeriods(n, today=new Date()){
-    const C = window.IDEAMIA_CONFIG; const desde = C.PERIODICO_DESDE || "2000-01";
+  function closedPeriods(n, today=new Date(), todos=false){
+    const C = window.IDEAMIA_CONFIG; const desde = todos ? "2000-01" : (C.PERIODICO_DESDE || "2000-01"); // todos: también los anteriores al sistema (para importar)
     const out=[]; const y0=today.getFullYear();
     for(let y=y0; y>=y0-3; y--){ for(let m=12; m>=1; m-=n){ // m = último mes del período
         const ini = m-n+1; if(ini<1) continue; if(n===12 && ini!==1) continue;

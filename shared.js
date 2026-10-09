@@ -227,7 +227,7 @@
     const nombre = `${meta.marca||"captura"}_${meta.periodo||""}_${meta.campo||""}_${Date.now()}`.replace(/[^\w.\-]+/g,"_");
     // El pedido para la IA viaja ya "escapado" para JSON: Make lo pega tal cual dentro del cuerpo de la llamada a Claude.
     const prompt = meta.leer && meta.prompt ? JSON.stringify(String(meta.prompt)).slice(1,-1) : "";
-    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(), meta.leer ? 90000 : 60000);
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(), meta.timeout || (meta.leer ? 90000 : 60000));
     let res;
     try{ res = await fetch(C.UPLOAD_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre, mime:"image/jpeg", data:b64, marca:meta.marca||"", periodo:meta.periodo||"", campo:meta.campo||"", tipo:meta.tipo||"", leer:meta.leer?1:0, prompt}),signal:ctrl.signal}); }
     catch(e){ throw new Error(e.name==="AbortError"?"La subida tardó demasiado":e.message); }
@@ -238,7 +238,12 @@
     if(!id) throw new Error("Make no devolvió el ID del archivo");
     let datos = j?.datos; if(typeof datos==="string"){ try{ datos=JSON.parse(datos.replace(/^```(json)?|```$/g,"").trim()); }catch(e){ datos=null; } }
     // Si la respuesta de Make vino rota (comillas sin escapar, texto cortado), se rescata al menos la devolución
-    if(!j && meta.leer){ const m=/"devolucion"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(txt); if(m){ try{ datos={devolucion:JSON.parse(`"${m[1]}"`)}; }catch(e){ datos={devolucion:m[1].replace(/\\n/g,"\n")}; } } }
+    if(!j && meta.leer){
+      // respuesta cortada (la IA llegó al límite de largo): se rescatan todas las claves completas que alcanzaron a llegar
+      const i = txt.indexOf('"datos"'); const s = i>=0 ? txt.slice(txt.indexOf("{", i)) : "";
+      if(s){ for(let p=s.length, intentos=0; p>1 && intentos<400; intentos++){ p = s.lastIndexOf(",", p-1); if(p<1) break; try{ const o=JSON.parse(s.slice(0,p)+"}"); if(o && typeof o==="object"){ datos=o; break; } }catch(e){} } }
+      if(!datos){ const m=/"devolucion"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(txt); if(m){ try{ datos={devolucion:JSON.parse(`"${m[1]}"`)}; }catch(e){ datos={devolucion:m[1].replace(/\\n/g,"\n")}; } } }
+    }
     return { id, url: j?.url || `https://drive.google.com/thumbnail?id=${id}&sz=w1600`, nombre, datos: (datos && typeof datos==="object") ? datos : null };
   }
   // Mes "carpeta" de un reporte: mes del lunes de la semana, el mes en sí, o el mes de inicio del período

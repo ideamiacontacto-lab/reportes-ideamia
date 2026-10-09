@@ -10,6 +10,7 @@
 <script src="forms.js"></script>
 <script src="periodico.js"></script>
 <script src="analisis.js"></script>
+<script src="importar.js"></script>
 <script src="fx.js"></script>
 <script src="https://ideamiacontacto-lab.github.io/panel-ideamia/ideamia-nav.js?v=1" defer></script>
 </head>
@@ -23,10 +24,11 @@
     <p class="lead">Las marcas no se construyen de una sola vez. <strong>Se construyen pieza por pieza</strong>, y cada reporte es una.</p>
   </section>
 
-  <div class="seg" id="nav" style="margin-bottom:18px"><label><input type="radio" name="nav" value="nuevo" checked><span>Nuevo reporte</span></label><label><input type="radio" name="nav" value="historial"><span>Reportes anteriores</span></label></div>
+  <div class="seg" id="nav" style="margin-bottom:18px"><label><input type="radio" name="nav" value="nuevo" checked><span>Nuevo reporte</span></label><label><input type="radio" name="nav" value="historial"><span>Reportes anteriores</span></label><label id="navImportar"><input type="radio" name="nav" value="importar"><span>Subir reporte viejo</span></label></div>
 
   <div id="login" class="hidden"></div>
   <div id="historial" class="hidden"></div>
+  <div id="importar" class="hidden"></div>
 
   <div id="setup" class="card accent">
     <div style="margin-bottom:14px"><span class="lbl">Tipo de reporte</span><div class="seg" id="tipoSeg"></div></div>
@@ -67,10 +69,11 @@
   let tipo = params.get("tipo") || ui.tipo || "sm";
   let marca = params.get("marca") || ui.marca || null, periodo = params.get("periodo") || ui.periodo || null, vals = {}, reports = [], idx = {};
   let reportsLoaded=false, editMode=false, sending=false, uploading=0, draftFail=false;
+  let importando = !!ui.importando; // revisando un reporte viejo subido desde archivo
   const TIPO_L = {sm:"Social Media · semanal", cm:"Community Manager · semanal", mensual:"Mensual", periodico:"Trimestral · Semestral · Anual"};
   let tiposDisponibles = ["sm","cm","mensual","periodico"];
   let dur = Number(params.get("dur") || (periodo&&periodo.includes("+") ? periodo.split("+")[1] : ui.dur) || 3);
-  function saveUI(){ try{ localStorage.setItem("ideamia-ui", JSON.stringify({tipo, marca, periodo, dur})); }catch(e){} }
+  function saveUI(){ try{ localStorage.setItem("ideamia-ui", JSON.stringify({tipo, marca, periodo, dur, importando})); }catch(e){} }
   // No cerrar la pestaña en medio de un envío o de una subida
   window.addEventListener("beforeunload", e=>{ if(sending || uploading>0){ e.preventDefault(); e.returnValue=""; } });
   const P = window.PERIODICO;
@@ -85,6 +88,7 @@
     if(resp){ try{ localStorage.setItem("ideamia-user",resp); }catch(e){} }
     if(resp && U.isCM(resp)) tipo="cm";
     tiposDisponibles = (resp && U.isCM(resp)) ? ["cm"] : resp ? ["sm","mensual","periodico"] : ["sm","cm","mensual","periodico"];
+    $("#navImportar")?.classList.toggle("hidden", !!(resp && U.isCM(resp))); // los reportes viejos son mensuales o periódicos: solo Social Media y Project
     if(!tiposDisponibles.includes(tipo)) tipo = tiposDisponibles[0];
     $("#who").innerHTML = (isProject ? "Project · Joaquín" : resp ? `${esc(C.RESPONSABLES[resp].nombre)} · ${esc(C.RESPONSABLES[resp].rol)}` : "Equipo Ideamia") + ((isProject||resp) ? ` <a href="#" id="logout" style="margin-left:8px;color:var(--muted);text-decoration:none" title="Cambiar de usuario">✕</a>` : "");
     document.body.classList.toggle("compact", isProject || !!resp); // portada chica para quien ya entró: el formulario queda a mano
@@ -126,7 +130,7 @@
     let opts;
     if(isPer){
       $("#dur").value = String(dur);
-      const closed = P.closedPeriods(dur);
+      const closed = P.closedPeriods(dur, new Date(), importando);
       const custom = periodo && periodo.includes("+") && !closed.find(c=>c.id===periodo) && periodo.split("+")[1]===String(dur) ? periodo : null;
       if(!periodo || !periodo.includes("+") || periodo.split("+")[1]!==String(dur)) periodo = closed.length ? closed[0].id : `${P.startMonths()[dur-1].id}+${dur}`;
       opts = closed.map(c=>({id:c.id,label:c.label}));
@@ -138,6 +142,8 @@
       $("#durInfo").textContent = `Período: ${pp.label} · ${pp.meses.filter(m=>idx[`mensual|${marca}|${m}`]).length} de ${pp.n} mensuales cargados${pp.meses.some(m=>idx[`mensual|${marca}|${m}`])?"":" · el mes a mes se completa a mano"}`;
     } else {
       opts = isMes ? U.recentMonths() : U.recentWeeks();
+      // reporte viejo importado: el mes puede ser anterior al arranque del sistema
+      if(importando && isMes && periodo && /^\d{4}-\d{2}$/.test(periodo) && !opts.find(o=>o.id===periodo)) opts.push(U.monthFromId(periodo));
       if(!periodo || !opts.find(o=>o.id===periodo)) periodo = opts[0].id;
     }
     const selVal = periodo;
@@ -158,7 +164,7 @@
         let d={}; try{ d=JSON.parse(localStorage.getItem(k)||"{}")||{}; }catch(e){ continue; }
         const llenos = Object.keys(d).filter(x=>!x.startsWith("_") && !/^(mm_|okr_\d+_obj|meta_\d+_obj|est_)/.test(x) && d[x]!=="" && d[x]!=null).length;
         if(llenos<2) continue;
-        if(reportsLoaded && idx[`${t}|${m}|${p}`] && !d._edit_de){ try{ localStorage.removeItem(k); }catch(e){} i--; continue; } // ya se entregó: se limpia
+        if(reportsLoaded && idx[`${t}|${m}|${p}`] && !d._edit_de && !d._import){ try{ localStorage.removeItem(k); }catch(e){} i--; continue; } // ya se entregó: se limpia
         const mk=C.MARCAS.find(x=>x.slug===m); const per = t==="periodico" ? P.parsePeriod(p).label : t==="mensual" ? U.monthFromId(p).label : U.weekFromId(p).label;
         out.push(`<a href="#" data-draft="${esc(t)}|${esc(m)}|${esc(p)}" style="color:var(--accent)">${esc(mk?mk.nombre:m)} · ${esc(TIPO_L[t]||t)} · ${esc(per)}${d._edit_de?" (corrección)":""}</a>`);
       }
@@ -174,22 +180,120 @@
     }catch(e){}
     return out.length ? `<div style="margin-top:8px">📝 Borradores sin enviar: ${out.join(" · ")}</div>` : "";
   }
-  $("#tipoSeg").addEventListener("change", e=>{ tipo = e.target.value; editMode=false; switchForm(); });
-  $("#marca").addEventListener("change", e=>{ marca = e.target.value; editMode=false; switchForm(); });
+  $("#tipoSeg").addEventListener("change", e=>{ tipo = e.target.value; editMode=false; importando=false; switchForm(); });
+  $("#marca").addEventListener("change", e=>{ marca = e.target.value; editMode=false; importando=false; switchForm(); });
   $("#periodo").addEventListener("change", e=>{
     if(tipo==="periodico" && e.target.value==="__otro__"){
       const months = P.startMonths(); const pick = prompt("Mes de inicio del período (formato AAAA-MM, ej. 2026-08):", months[dur-1].id);
       if(pick && /^\d{4}-\d{2}$/.test(pick)) periodo = `${pick}+${dur}`; 
     } else periodo = e.target.value;
-    editMode=false; switchForm(); });
-  $("#dur").addEventListener("change", e=>{ dur = Number(e.target.value); periodo = `${periodo.split("+")[0]}+${dur}`; editMode=false; switchForm(); });
+    llevarImportado(); editMode=false; switchForm(); });
+  $("#dur").addEventListener("change", e=>{ dur = Number(e.target.value); periodo = `${periodo.split("+")[0]}+${dur}`; llevarImportado(); editMode=false; switchForm(); });
+  // si se corrige el período de un reporte importado, lo leído viaja al período nuevo
+  let _keyPrevia=null;
+  function llevarImportado(){ if(!importando || !vals._import || !_keyPrevia) return; const k=draftKey(); if(k===_keyPrevia) return; try{ localStorage.setItem(k, JSON.stringify(vals)); localStorage.removeItem(_keyPrevia); }catch(e){} }
   $("#nav").addEventListener("change", e=>{ showView(e.target.value); });
+  const vistaActual = () => document.querySelector("input[name=nav]:checked")?.value || "nuevo";
   function showView(v){
-    const hist = v==="historial";
-    ["setup","form","errbox","doneView"].forEach(id=>{ if(hist) $("#"+id).classList.add("hidden"); });
-    $("#bar").classList.toggle("hidden", hist);
+    const hist = v==="historial", imp = v==="importar", otra = hist || imp;
+    ["setup","form","errbox","doneView"].forEach(id=>{ if(otra) $("#"+id).classList.add("hidden"); });
+    $("#bar").classList.toggle("hidden", otra);
     $("#historial").classList.toggle("hidden", !hist);
-    if(hist) renderHistorial(); else switchForm();
+    $("#importar").classList.toggle("hidden", !imp);
+    if(hist) renderHistorial(); else if(imp) renderImportar(); else switchForm();
+  }
+
+  // ---------- subir reporte viejo ----------
+  // Mensuales, trimestrales, semestrales o anuales hechos antes del sistema: se lee el archivo, la IA lo pasa al formato
+  // del sistema y se abre el formulario ya completo para revisar y guardar.
+  function renderImportar(){
+    const box=$("#importar"); const ms=marcasDisponibles();
+    const hoy=new Date(); const mesPasado = U.lastCompleteMonth().id;
+    box.innerHTML = `<div class="card accent">
+      <div class="kicker">— Para que todo quede en un solo lugar</div>
+      <h2 style="margin:8px 0 10px">Subir un reporte viejo</h2>
+      <p class="muted" style="margin:0 0 18px;max-width:640px">Mensuales, trimestrales, semestrales o anuales hechos antes del sistema. Subí el Word, PowerPoint, PDF o capturas: la IA los pasa al formato del sistema, lo revisás y queda en el historial, con su PDF y su presentación.</p>
+      <div class="grid g3">
+        <label class="f"><span class="l">Marca</span><select id="impMarca">${ms.map(m=>`<option value="${m.slug}" ${m.slug===marca?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select></label>
+        <label class="f"><span class="l">Tipo</span><select id="impTipo"><option value="mensual">Mensual</option><option value="3" selected>Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></label>
+        <label class="f"><span class="l" id="impMesLbl">Mes de inicio</span><input type="month" id="impMes" max="${mesPasado}"></label>
+      </div>
+      <div class="small" id="impPer" style="margin:-4px 0 14px"></div>
+      <label class="f"><span class="l">Archivo del reporte</span><input type="file" id="impFile" accept=".docx,.pptx,.pdf,image/*" multiple style="padding:10px"></label>
+      <div class="help">Word (.docx), PowerPoint (.pptx), PDF o hasta 8 capturas de las páginas. Si es un .doc o .ppt viejo, guardalo antes como .docx, .pptx o PDF.</div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px"><button class="btn" id="impGo">Procesar reporte</button><span class="small" id="impSt" style="color:var(--warn)"></span></div>
+    </div>`;
+    const actualizar = () => {
+      const t=$("#impTipo").value, m=$("#impMes").value; const mens = t==="mensual";
+      $("#impMesLbl").textContent = mens ? "Mes del reporte" : "Mes de inicio del período";
+      if(!m){ $("#impPer").textContent=""; return; }
+      const per = mens ? m : `${m}+${t}`; const lab = mens ? U.monthFromId(m).label : P.parsePeriod(per).label;
+      const fin = mens ? m : P.parsePeriod(per).fin; const futuro = fin >= `${hoy.getFullYear()}-${U.pad(hoy.getMonth()+1)}`;
+      const ya = idx[`${mens?"mensual":"periodico"}|${$("#impMarca").value}|${per}`];
+      $("#impPer").innerHTML = futuro ? `<span style="color:var(--bad)">Ese período todavía no terminó.</span>` : `Período: <b>${esc(lab)}</b>${ya?` · <span style="color:var(--warn)">ya hay un reporte de ese período: si guardás, queda como versión nueva</span>`:""}`;
+    };
+    const defMes = t => { const d=new Date(hoy.getFullYear(), hoy.getMonth()-(t==="mensual"?1:Number(t)), 1); return `${d.getFullYear()}-${U.pad(d.getMonth()+1)}`; };
+    $("#impMes").value = defMes("3");
+    $("#impTipo").addEventListener("change", ()=>{ $("#impMes").value = defMes($("#impTipo").value); actualizar(); });
+    $("#impMes").addEventListener("change", actualizar); $("#impMarca").addEventListener("change", actualizar);
+    actualizar();
+    $("#impGo").addEventListener("click", procesarImportacion);
+  }
+  async function procesarImportacion(){
+    const st = t => { $("#impSt").textContent = t; };
+    const t=$("#impTipo").value, mes=$("#impMes").value, mk=$("#impMarca").value, files=$("#impFile").files;
+    if(!mes){ st("Elegí el mes."); return; }
+    if(!files || !files.length){ st("Elegí el archivo del reporte."); return; }
+    const tipoD = t==="mensual" ? "mensual" : "periodico", per = t==="mensual" ? mes : `${mes}+${t}`;
+    const finPer = t==="mensual" ? mes : P.parsePeriod(per).fin; const hoy=new Date();
+    if(finPer >= `${hoy.getFullYear()}-${U.pad(hoy.getMonth()+1)}`){ st("Ese período todavía no terminó."); return; }
+    const marcaNom = (C.MARCAS.find(x=>x.slug===mk)||{}).nombre || mk;
+    const perLabel = t==="mensual" ? U.monthFromId(mes).label : P.parsePeriod(per).label;
+    const btn=$("#impGo"); btn.disabled=true; uploading++;
+    try{
+      st("Leyendo el archivo…");
+      const lect = await window.IMPORTAR.leerArchivos(files, `${marcaNom} · ${perLabel}`);
+      let orig=null;
+      if(lect.tipo==="texto" || /pdf$/i.test(files[0].name)){ st("Guardando el archivo original en Drive…"); orig = await window.IMPORTAR.subirOriginal(files[0], {marca:mk, periodo:per}); }
+      const datos={}, devol=[], paginas=[];
+      if(!C.UPLOAD_URL) devol.push("La lectura automática no está configurada: completá a mano lo principal.");
+      else {
+        const ctx = { marca:marcaNom, periodo:perLabel, tipoNombre: t==="mensual"?"mensual":P.parsePeriod(per).tipoNombre.toLowerCase(), archivo: files[0].name };
+        // Word, PowerPoint o PDF con texto: se pide en 3 partes (números · listas · textos) con todo el texto del reporte.
+        // Capturas o PDF escaneado: una pasada por página.
+        const pasos = lect.tipo==="texto"
+          ? window.IMPORTAR.GRUPOS[tipoD].map((g,i,arr)=>({ img: lect.imagenes[0], grupo:g, etiqueta:`parte ${i+1} de ${arr.length}`, texto: lect.texto }))
+          : lect.imagenes.map((img,k,arr)=>({ img, grupo:"", etiqueta: arr.length>1?`página ${k+1} de ${arr.length}`:"", parte: arr.length>1?`${k+1} de ${arr.length}`:"", texto: (lect.textosPagina||[])[k]||"" }));
+        for(const [k,p] of pasos.entries()){
+          st(`Procesando con IA${p.etiqueta?` · ${p.etiqueta}`:""}… (cada parte tarda entre 20 segundos y un minuto)`);
+          try{
+            const r = await U.subirFoto(p.img, {marca:mk, periodo:per, campo:"importar", tipo:tipoD, leer:true, timeout:200000,
+              prompt: window.IMPORTAR.prompt(tipoD, ctx, p.texto||"", p.parte||"", p.grupo)});
+            if(lect.tipo!=="texto" || k===0) paginas.push({id:r.id, url:r.url, nombre:r.nombre});
+            if(r.datos){ const m=window.IMPORTAR.mapear(tipoD, r.datos); for(const [a,b] of Object.entries(m)) if(!(a in datos)) datos[a]=b; if(r.datos.devolucion) devol.push(String(r.datos.devolucion)); }
+          }catch(err){ devol.push(`No se pudo procesar ${p.etiqueta||"el archivo"} con IA (${err.message}).`); }
+        }
+      }
+      const leidos = Object.keys(datos).length;
+      // resumen corto de lo que no estaba en el reporte (obligatorios del formulario que quedaron vacíos)
+      const faltan=[]; window.walkFields(FORMS[tipoD], datos, f=>{ const r = typeof f.req==="function" ? f.req(datos) : f.req; if(r && f.id && !(f.id in datos) && !(f.showIf && !f.showIf(datos))) faltan.push(f.label.replace(/\s*\(.*\)$/,"")); });
+      if(leidos) devol.unshift(`Completé ${leidos} campos con lo que dice el reporte.`);
+      if(faltan.length) devol.push(`No estaban en el reporte: ${faltan.slice(0,8).join(", ")}${faltan.length>8?` y ${faltan.length-8} más`:""}. Podés completarlos o dejarlos vacíos.`);
+      // se abre el formulario de ese tipo, marca y período, con lo que leyó la IA
+      tipo=tipoD; marca=mk; periodo=per; if(tipoD==="periodico") dur=Number(t); editMode=false; importando=true;
+      const v = Object.assign({}, datos, { _import:{ archivo: files.length>1 ? `${files.length} capturas` : files[0].name, url: orig?orig.url:"", ia: devol.join(" "), leidos, paginas, en: new Date().toISOString() } });
+      try{ localStorage.setItem(draftKey(), JSON.stringify(v)); }catch(e){}
+      saveUI();
+      const nv=document.querySelector('input[name=nav][value=nuevo]'); if(nv) nv.checked=true;
+      showView("nuevo"); window.scrollTo({top:0,behavior:"smooth"});
+      toast(leidos ? `La IA completó ${leidos} campos. Revisalos y guardá.` : "No se pudieron leer datos: completá lo principal a mano.", leidos?"ok":"bad");
+    }catch(err){ st(err.message || "No se pudo procesar el archivo"); }
+    finally{ btn.disabled=false; uploading--; }
+  }
+  function cancelImport(){
+    if(!confirm("¿Descartar este reporte importado? No se guarda nada.")) return;
+    const k=draftKey(); try{ localStorage.removeItem(k); }catch(e){} cancelarNube(k); U.nubeBorrar(k);
+    importando=false; saveUI(); const nv=document.querySelector('input[name=nav][value=importar]'); if(nv) nv.checked=true; showView("importar");
   }
 
   // ---------- render ----------
@@ -306,7 +410,7 @@
   function cellRO(c, v){ if(v==null||v==="") return ""; if(c.t==="url") return okUrl(v)?`<a href="${esc(String(v).trim())}" target="_blank" rel="noopener">Ver ↗</a>`:esc(v); return esc(v); }
   function renderReadOnly(schema, d){
     d = Object.assign({}, d, { _canal: !!(d.canal_movido) || d._canal });
-    let rows="";
+    let rows = d.importado ? `<div class="ref" style="border-style:solid">📎 Reporte importado de <b>${esc(d.importado_archivo||"un archivo")}</b> (hecho antes del sistema)${d.importado_url?` · <a href="${esc(d.importado_url)}" target="_blank" rel="noopener">ver el original ↗</a>`:""}</div>` : "";
     for(const s of schema.secciones){
       const items=[];
       const walk=f=>{
@@ -422,7 +526,12 @@
     </section>`).join("");
     S.secciones.forEach(sec=>sec.fields.forEach(f=>{ if(f.type==="repeat") renderRepeat(f); }));
     if(editMode){ const box=document.createElement("section"); box.className="section card"; box.style.borderColor="var(--warn)"; box.dataset.sec="0"; box.innerHTML=`<div class="section-head"><span class="num" style="color:var(--warn)">✎</span><h2>Corrección de un reporte ya enviado</h2><span class="hint"><button type="button" class="btn sm ghost" id="cancelEdit">Descartar corrección</button></span></div><div class="help" style="margin-bottom:10px">Tus cambios se guardan solos en este dispositivo: si se corta o actualizás la página, la corrección sigue acá. El reporte original no cambia hasta que tocás "Enviar corrección".</div><label class="f" data-field="edicion_motivo"><span class="l">¿Qué corregís y por qué?<span class="req">*</span></span><textarea name="edicion_motivo">${esc(vals.edicion_motivo||"")}</textarea><div class="help">Queda registrado junto con la versión anterior. Solo lo ve Project.</div></label>`; $("#form").prepend(box); box.querySelector("#cancelEdit").addEventListener("click",cancelEdit); }
-    $("#send").textContent = editMode ? "Enviar corrección" : "Enviar reporte";
+    if(importando && vals._import){ const im=vals._import; const box=document.createElement("section"); box.className="section card"; box.style.borderTop="2px solid var(--accent)"; box.dataset.sec="0";
+      box.innerHTML=`<div class="section-head"><span class="num" style="color:var(--accent);opacity:1;transform:none">↑</span><h2 style="opacity:1;transform:none">Reporte importado</h2><span class="hint"><button type="button" class="btn sm ghost" id="cancelImp">Descartar</button></span></div>
+        <p style="margin:0 0 8px">Leído de <b>${esc(im.archivo||"archivo")}</b>${im.url?` · <a href="${esc(im.url)}" target="_blank" rel="noopener">ver el original ↗</a>`:""}. ${im.leidos?`La IA completó <b>${im.leidos} campos</b>.`:""} Revisá, corregí lo que haga falta y tocá <b>Guardar en el historial</b>. No hace falta completar todo: un reporte viejo no tiene por qué tener todos los datos.</p>
+        ${im.ia?`<div class="diag" style="margin:8px 0 0"><div class="diag-head"><span>Lo que dice la IA</span></div><div class="small">${esc(im.ia)}</div></div>`:""}`;
+      $("#form").prepend(box); box.querySelector("#cancelImp").addEventListener("click", cancelImport); }
+    $("#send").textContent = importando ? "Guardar en el historial" : editMode ? "Enviar corrección" : "Enviar reporte";
     applyVisibility();
     refreshDiag();
     updateMissing();
@@ -452,6 +561,7 @@
   // ---------- contador de obligatorios ----------
   function missingList(){
     const errs=[]; let total = editMode ? 1 : 0;
+    if(importando){ errs.total = 0; return errs; }
     if(editMode && !(vals.edicion_motivo||"").trim()) errs.push({id:"edicion_motivo", msg:"¿Qué corregís y por qué?"});
     window.walkFields(FORMS[tipo], vals, (f,ctx)=>{
       if(f.type==="table"||f.type==="list"||f.type==="fotos") return;
@@ -484,11 +594,11 @@
   function applyGate(){
     ["cmGate","dupGate"].forEach(id=>document.getElementById(id)?.remove());
     const secs = Array.from($("#form").querySelectorAll("section"));
-    secs.forEach(s=>s.classList.remove("hidden")); $("#bar").classList.remove("hidden");
+    secs.forEach(s=>s.classList.remove("hidden")); $("#bar").classList.toggle("hidden", vistaActual()!=="nuevo"); // la barra de enviar solo en "Nuevo reporte"
     const m = C.MARCAS.find(x=>x.slug===marca);
 
     const ex = existing();
-    if(ex && !editMode){
+    if(ex && !editMode && !importando){
       secs.forEach(s=>s.classList.add("hidden")); $("#bar").classList.add("hidden");
       const sent=new Date(ex.enviado_en);
       const box=document.createElement("div"); box.id="dupGate"; box.className="card accent";
@@ -582,13 +692,16 @@
     let c=null; try{ c=await U.nubeLeer(key); }catch(e){ return; }
     if(!c || !c.vals || draftKey()!==key || (vals._ts||0)!==ts0) return; // cambió de reporte o escribió mientras tanto
     const tsN = Number(c.vals._ts||c.actualizado||0);
-    if(reportsLoaded && existing() && !c.vals._edit_de){ if(tsN < U.ts(existing().enviado_en)+60000) U.nubeBorrar(key); return; } // ya se envió
+    if(reportsLoaded && existing() && !c.vals._edit_de && !c.vals._import){ if(tsN < U.ts(existing().enviado_en)+60000) U.nubeBorrar(key); return; } // ya se envió
     if(tsN <= ts0+1000) return;
+    if(vistaActual()!=="nuevo"){ try{ localStorage.setItem(key, JSON.stringify(c.vals)); }catch(e){} return; } // en otra pestaña: se guarda y se muestra al volver
     vals = c.vals; vals._canal = !!(C.MARCAS.find(x=>x.slug===marca)||{}).canal;
     try{ localStorage.setItem(key, JSON.stringify(vals)); }catch(e){}
     editMode = !!(vals._edit_de && existing()); _defsCache=null;
     renderForm(); applyGate();
-    toast(`Recuperé el borrador guardado en la nube${c.quien?` (última edición: ${C.RESPONSABLES[c.quien]?.nombre||c.quien})`:""}.`,"ok");
+    // si el borrador es de otra persona, se avisa: escribir encima pisaría su trabajo
+    if(c.quien && c.quien!==currentUser) toast(`Ojo: ${C.RESPONSABLES[c.quien]?.nombre||c.quien} tiene este reporte a medio hacer. Si escribís acá, se reemplaza su borrador.`,"bad");
+    else toast(`Recuperé el borrador guardado en la nube${c.quien?` (última edición: ${C.RESPONSABLES[c.quien]?.nombre||c.quien})`:""}.`,"ok");
   }
   function loadDraft(){ try{ const s=localStorage.getItem(draftKey()); vals = s?JSON.parse(s):{}; }catch(e){ vals={}; } }
 
@@ -764,6 +877,7 @@
     if(!editMode) loadDraft();
     // corrección a medio hacer guardada en el dispositivo → se retoma sola
     if(!editMode && vals._edit_de && existing()) editMode=true;
+    importando = !!vals._import; if(importando) editMode=false; _keyPrevia = draftKey();
     if(reportsLoaded && !existing() && vals._edit_de){ delete vals._edit_de; delete vals.edicion_motivo; editMode=false; }
     vals._canal = !!(C.MARCAS.find(x=>x.slug===marca)||{}).canal;
     prefillMensual(); prefillPeriodico(); prefillObjetivos();
@@ -778,6 +892,7 @@
   const empty = v => v==null || v==="" || (Array.isArray(v)&&!v.length);
   function validate(){
     const errs=[]; document.querySelectorAll(".invalid").forEach(x=>x.classList.remove("invalid"));
+    if(importando) return errs; // reporte viejo: se guarda con lo que tenga
     if(editMode && !(vals.edicion_motivo||"").trim()) errs.push({id:"edicion_motivo", msg:"¿Qué corregís y por qué?"});
     window.walkFields(FORMS[tipo], vals, (f,ctx)=>{
       if(f.type==="table"||f.type==="list"||f.type==="fotos") return;
@@ -818,6 +933,7 @@
     else if(tipo==="periodico"){ resumen=`${per.tipoNombre}: ${d.s_texto||""}`; alcance=U.num(d.p_alc_total); netos=U.num(d.p_seg_sumados)-U.num(d.p_seg_perdidos); inter=U.num(d.p_inter); }
     else { resumen=d.resumen_mes||""; alcance=U.num(d.m_alc_total); netos=U.num(d.seg_sumados)-U.num(d.seg_perdidos); inter=U.num(d.m_inter); }
     if(editMode) resumen = "(corregido) " + resumen;
+    if(importando) resumen = "(importado) " + resumen;
     const datos={}; Object.entries(d).forEach(([k,v])=>{ if(!empty(v) && !k.startsWith("_")) datos[k]=v; });
     if(tipo==="sm"){ for(let i=1;i<=Number(d.reels_n||0);i++) if(!datos[`reel${i}_alcanzado`]){ const a=calcAlcanzado(d,`reel${i}`); if(a) datos[`reel${i}_alcanzado`]=a; } for(let i=1;i<=Number(d.feed_n||0);i++) if(!datos[`pub${i}_alcanzado`]){ const a=calcAlcanzado(d,`pub${i}`); if(a) datos[`pub${i}_alcanzado`]=a; } }
     if(tipo==="sm" && window.ANALISIS){
@@ -827,6 +943,8 @@
       const bp = window.ANALISIS.baselinePubs(reports, marca, periodo);
       for(let i=1;i<=Number(d.feed_n||0);i++){ const r=window.ANALISIS.diagPub(d,i,bp); if(r&&r.items&&r.items.length&&r.score!=null) datos[`pub${i}_diag`] = `${r.veredicto} ` + r.items.filter(x=>x.lvl!=="info").map(x=>`${x.k}: ${x.txt}`).join(" · "); }
     }
+    // reporte viejo subido desde archivo: queda marcado y con el enlace al original
+    if(importando && d._import){ datos.importado = true; datos.importado_archivo = d._import.archivo||""; if(d._import.url) datos.importado_url = d._import.url; if(Array.isArray(d._import.paginas) && d._import.paginas.length) datos.importado_paginas = d._import.paginas.slice(0,8); }
     // "Qué funcionó" queda guardado en el mensual y el periódico para la presentación
     if((tipo==="mensual"||tipo==="periodico") && window.ANALISIS){ const q=queFuncionoActual(); if(q && q.n) datos.que_funciono = { n:q.n, pilar:q.pilar.slice(0,5), dia:q.dia.slice(0,3), franja:q.franja.slice(0,3), formato:q.formato.slice(0,4) }; }
     return { enviado_en:enviado, tipo, marca:m.nombre, marca_slug:marca, periodo_id:periodo, periodo_label:per.label, responsable:responsableDe(),
@@ -851,7 +969,7 @@
     $("#status").textContent = "Enviando… no cierres ni actualices la página.";
     try{
       await U.enviarWebhook(payload, msg=>{ btn.textContent="Comprobando…"; $("#status").textContent=msg; });
-      cancelarNube(key0); U.nubeBorrar(key0); nubeLst = nubeLst.filter(x=>x.clave!==key0);
+      cancelarNube(key0); U.nubeBorrar(key0); nubeLst = nubeLst.filter(x=>x.clave!==key0); importando=false; saveUI();
       try{ localStorage.removeItem(key0); if(tipo==="periodico") localStorage.setItem(`ideamia-pres|${marca}|${periodo}`, JSON.stringify(payload)); }catch(e){}
       sending=false; btn.disabled=false; btn.textContent=lbl;
       showDone(payload);
@@ -941,7 +1059,7 @@
     for(const r of list){ const m=U.mesDe(r); (groups[m] ??= []).push(r); }
     const meses = Object.keys(groups).sort().reverse();
     const fmtD = s => { const d=new Date(s); return isNaN(d)?esc(s):d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"2-digit"}); };
-    const rowHtml = (r,i) => `<tr><td><b>${esc(r.marca)}</b></td><td>${r.tipo==="periodico"&&r.periodo_id.includes("+")?P.parsePeriod(r.periodo_id).tipoNombre:(TL[r.tipo]||esc(r.tipo))}</td><td>${esc(r.periodo_label)}</td><td>${esc(r.responsable)}</td><td class="muted">${fmtD(r.enviado_en)}${r.version>1?` <span class="pill warn" style="padding:2px 7px;font-size:11px">corregido · v${r.version}</span>`:""}</td><td style="white-space:nowrap"><button class="btn sm ghost" data-hv="${i}">Ver</button> <button class="btn sm ghost" data-hp="${i}" title="Descargar PDF">PDF</button> ${puedeEditar(r)?`<button class="btn sm ghost" data-he="${i}">Editar</button>`:""} ${r.tipo==="periodico"?`<a class="btn sm" href="${presUrl(r)}" target="_blank">Presentación</a>`:""} ${isProject ? `<button class="btn sm ghost" data-del="${i}" title="Eliminar" style="border-color:rgba(255,107,107,.5);color:var(--bad)">Eliminar</button>`:""}</td></tr><tr class="hidden" data-hd="${i}"><td colspan="6" style="background:var(--surface2)"></td></tr>`;
+    const rowHtml = (r,i) => `<tr><td><b>${esc(r.marca)}</b></td><td>${r.tipo==="periodico"&&r.periodo_id.includes("+")?P.parsePeriod(r.periodo_id).tipoNombre:(TL[r.tipo]||esc(r.tipo))}</td><td>${esc(r.periodo_label)}</td><td>${esc(r.responsable)}</td><td class="muted">${fmtD(r.enviado_en)}${r.version>1?` <span class="pill warn" style="padding:2px 7px;font-size:11px">corregido · v${r.version}</span>`:""}${r.datos&&r.datos.importado?` <span class="pill" style="padding:2px 7px;font-size:10px">importado</span>`:""}</td><td style="white-space:nowrap"><button class="btn sm ghost" data-hv="${i}">Ver</button> <button class="btn sm ghost" data-hp="${i}" title="Descargar PDF">PDF</button> ${puedeEditar(r)?`<button class="btn sm ghost" data-he="${i}">Editar</button>`:""} ${r.tipo==="periodico"?`<a class="btn sm" href="${presUrl(r)}" target="_blank">Presentación</a>`:""} ${isProject ? `<button class="btn sm ghost" data-del="${i}" title="Eliminar" style="border-color:rgba(255,107,107,.5);color:var(--bad)">Eliminar</button>`:""}</td></tr><tr class="hidden" data-hd="${i}"><td colspan="6" style="background:var(--surface2)"></td></tr>`;
     box.innerHTML = `<div class="card">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><h2>Reportes anteriores</h2><select id="histMarca" style="width:auto;min-width:180px"><option value="todas">Todas las marcas</option>${ms.map(m=>`<option value="${m.slug}" ${m.slug===histMarca?"selected":""}>${esc(m.nombre)}</option>`).join("")}</select><span class="small muted">${list.length} reportes</span></div>
       ${reportsLoaded ? "" : '<div class="small muted">Cargando…</div>'}

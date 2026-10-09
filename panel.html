@@ -137,6 +137,7 @@
     const now=new Date();
     const deadline = tipo==="mensual" ? U.monthDeadline(perId) : U.weekDeadline(perId, tipo);
     const periodEnd = tipo==="mensual" ? (()=>{const [y,m]=perId.split("-").map(Number); return new Date(y,m,1);})() : U.addDays(U.parseISO(perId),7);
+    if(r && r.datos && r.datos.importado) return { s:"ok", r, deadline }; // reporte viejo subido desde archivo: no cuenta como tarde
     if(r){ const sent=new Date(r.enviado_en); return { s: (isNaN(sent)||sent<=deadline) ? "ok":"late", r, deadline }; }
     const desde = tipo==="mensual" ? C.MENSUAL_DESDE : C.SEMANAL_DESDE;
     if(desde && perId < desde) return { s:"na", deadline };
