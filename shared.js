@@ -228,10 +228,20 @@
     // El pedido para la IA viaja ya "escapado" para JSON: Make lo pega tal cual dentro del cuerpo de la llamada a Claude.
     const prompt = meta.leer && meta.prompt ? JSON.stringify(String(meta.prompt)).slice(1,-1) : "";
     const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(), meta.timeout || (meta.leer ? 90000 : 60000));
-    let res;
-    try{ res = await fetch(C.UPLOAD_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre, mime:"image/jpeg", data:b64, marca:meta.marca||"", periodo:meta.periodo||"", campo:meta.campo||"", tipo:meta.tipo||"", leer:meta.leer?1:0, prompt}),signal:ctrl.signal}); }
-    catch(e){ throw new Error(e.name==="AbortError"?"La subida tardó demasiado":e.message); }
+    let res, iaFallo=false;
+    const enviar = (leer, signal) => fetch(C.UPLOAD_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre, mime:"image/jpeg", data:b64, marca:meta.marca||"", periodo:meta.periodo||"", campo:meta.campo||"", tipo:meta.tipo||"", leer:leer?1:0, prompt: leer?prompt:""}),signal});
+    try{ res = await enviar(meta.leer, ctrl.signal); }
+    catch(e){ if(!meta.leer) throw new Error(e.name==="AbortError"?"La subida tardó demasiado":e.message); res=null; }
     finally{ clearTimeout(t); }
+    // Si falla la lectura con IA (la cuenta de la IA sin crédito, Make caído a mitad de camino, etc.),
+    // la captura se guarda igual sin lectura: nadie queda trabado por la IA.
+    if(meta.leer && (!res || !res.ok)){
+      iaFallo=true;
+      const c2=new AbortController(); const t2=setTimeout(()=>c2.abort(), 60000);
+      try{ res = await enviar(false, c2.signal); }
+      catch(e){ throw new Error(e.name==="AbortError"?"La subida tardó demasiado":e.message); }
+      finally{ clearTimeout(t2); }
+    }
     if(!res.ok) throw new Error("HTTP "+res.status);
     const txt = await res.text(); let j=null; try{ j=JSON.parse(txt); }catch(e){}
     const id = j?.id || (txt.match(/"id"\s*:\s*"([-\w]{20,})"/)||[])[1] || (txt.match(/[-\w]{25,}/)||[])[0];
@@ -244,7 +254,7 @@
       if(s){ for(let p=s.length, intentos=0; p>1 && intentos<400; intentos++){ p = s.lastIndexOf(",", p-1); if(p<1) break; try{ const o=JSON.parse(s.slice(0,p)+"}"); if(o && typeof o==="object"){ datos=o; break; } }catch(e){} } }
       if(!datos){ const m=/"devolucion"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(txt); if(m){ try{ datos={devolucion:JSON.parse(`"${m[1]}"`)}; }catch(e){ datos={devolucion:m[1].replace(/\\n/g,"\n")}; } } }
     }
-    return { id, url: j?.url || `https://drive.google.com/thumbnail?id=${id}&sz=w1600`, nombre, datos: (datos && typeof datos==="object") ? datos : null };
+    return { id, url: j?.url || `https://drive.google.com/thumbnail?id=${id}&sz=w1600`, nombre, datos: (datos && typeof datos==="object") ? datos : null, iaFallo };
   }
   // Mes "carpeta" de un reporte: mes del lunes de la semana, el mes en sí, o el mes de inicio del período
   function mesDe(r){

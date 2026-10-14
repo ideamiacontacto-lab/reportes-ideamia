@@ -270,6 +270,7 @@
             const r = await U.subirFoto(p.img, {marca:mk, periodo:per, campo:"importar", tipo:tipoD, leer:true, timeout:200000,
               prompt: window.IMPORTAR.prompt(tipoD, ctx, p.texto||"", p.parte||"", p.grupo)});
             if(lect.tipo!=="texto" || k===0) paginas.push({id:r.id, url:r.url, nombre:r.nombre});
+            if(r.iaFallo){ devol.push("La lectura con IA no está respondiendo ahora: el archivo quedó guardado y podés completar el reporte a mano (o volver a subirlo más tarde)."); break; }
             if(r.datos){ const m=window.IMPORTAR.mapear(tipoD, r.datos); for(const [a,b] of Object.entries(m)) if(!(a in datos)) datos[a]=b; if(r.datos.devolucion) devol.push(String(r.datos.devolucion)); }
           }catch(err){ devol.push(`No se pudo procesar ${p.etiqueta||"el archivo"} con IA (${err.message}).`); }
         }
@@ -774,9 +775,10 @@
             const n=aplicarLectura(id, r.datos);
             if(n) toast(`La IA leyó ${n} dato${n>1?"s":""} de la captura y completó los campos vacíos. Revisalos antes de enviar.`,"ok");
           }
+          if(r.iaFallo) toast("La captura se guardó, pero la lectura con IA no está respondiendo ahora: completá los números a mano.","bad");
           arr.push(foto); vals[id]=arr; saveDraft();
         }
-        catch(err){ toast("No se pudo subir la captura: "+err.message+". Probá de nuevo; lo demás del reporte sigue guardado.","bad"); }
+        catch(err){ toast("No se pudo subir la captura ("+err.message+"). Probá de nuevo en un momento; lo demás del reporte sigue guardado.","bad"); }
       }
     } finally { uploading--; }
     if(st) st.textContent=""; renderForm(); applyGate();
