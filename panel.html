@@ -6,10 +6,10 @@
 <title>Panel de reportes · Ideamia</title>
 <link rel="stylesheet" href="styles.css">
 <script src="config.js"></script>
-<script src="shared.js"></script>
-<script src="forms.js"></script>
-<script src="periodico.js"></script>
-<script src="analisis.js"></script>
+<script src="shared.js?v=20261020"></script>
+<script src="forms.js?v=20261020"></script>
+<script src="periodico.js?v=20261020"></script>
+<script src="analisis.js?v=20261020"></script>
 <script src="fx.js"></script>
 <script src="https://ideamiacontacto-lab.github.io/panel-ideamia/ideamia-nav.js?v=1" defer></script>
 <style>
@@ -210,7 +210,7 @@
     if(tipo==="sm"){
       const p=idx[`sm|${slug}|${U.prevWeekId(per)}`]?.datos;
       const net=x=>x?U.num(x.seg_sumados)-U.num(x.seg_perdidos):null;
-      top=`<div class="kpis" style="margin:14px 0 4px">${kpi("Alcance total",U.num(d.alcance_total),p?U.num(p.alcance_total):null)}${kpi("Seguidores netos",net(d),net(p))}${kpi("Interacciones",U.num(d.interacciones),p?U.num(p.interacciones):null)}${kpi("Alcance no seg.",U.num(d.alcance_noseg),p?U.num(p.alcance_noseg):null)}${kpi("Reels",U.num(d.reels_n),p?U.num(p.reels_n):null)}</div><div class="small muted">Comparativa contra la semana ${p?esc(idx[`sm|${slug}|${U.prevWeekId(per)}`].periodo_label):"anterior (sin reporte cargado)"}</div>`;
+      top=`<div class="kpis" style="margin:14px 0 4px">${kpi("Espectadores",U.num(d.alcance_total),p?U.num(p.alcance_total):null)}${kpi("Seguidores netos",net(d),net(p))}${kpi("Interacciones",U.num(d.interacciones),p?U.num(p.interacciones):null)}${kpi("Alcance no seg.",U.num(d.alcance_noseg),p?U.num(p.alcance_noseg):null)}${kpi("Reels",U.num(d.reels_n),p?U.num(p.reels_n):null)}</div><div class="small muted">Comparativa contra la semana ${p?esc(idx[`sm|${slug}|${U.prevWeekId(per)}`].periodo_label):"anterior (sin reporte cargado)"}</div>`;
       // objetivos de reels
       const rl=[]; for(let i=1;i<=Number(d.reels_n||0);i++){ const pv=Array.isArray(d[`reel${i}_portada`])&&d[`reel${i}_portada`][0]; const lk=String(d[`reel${i}_link`]||"").trim(); const okl=/^https?:\/\/\S+$/i.test(lk); rl.push(`<tr><td style="white-space:nowrap">${pv?`<a href="${okl?esc(lk):esc(pv.url)}" target="_blank" rel="noopener"><img src="${esc(pv.url)}" alt="" style="width:36px;height:48px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:8px;border:1px solid var(--border2)"></a>`:""}${esc(d[`reel${i}_nombre`])}${okl?` <a href="${esc(lk)}" target="_blank" rel="noopener" title="Ver en Instagram" style="color:var(--accent);text-decoration:none">↗</a>`:""}</td><td>${U.fmt(U.num(d[`reel${i}_res_views`]))} <span class="muted">/ ${U.fmt(U.num(d[`reel${i}_obj_views`]))}</span></td><td>${U.fmt(U.num(d[`reel${i}_res_mg`]))} <span class="muted">/ ${U.fmt(U.num(d[`reel${i}_obj_mg`]))}</span></td><td>${U.fmt(U.num(d[`reel${i}_res_guard`]))}</td><td>${U.fmt(U.num(d[`reel${i}_res_comp`]))}</td><td><span class="tag ${d[`reel${i}_alcanzado`]==="Sí"?"ok":d[`reel${i}_alcanzado`]==="No"?"bad":"warn"}">${esc(d[`reel${i}_alcanzado`]||"–")}</span></td></tr>`); }
       if(rl.length) top+=`<table class="t" style="margin-top:14px"><thead><tr><th>Reel</th><th>Views / obj.</th><th>MG / obj.</th><th>Guard.</th><th>Compart.</th><th>Objetivo</th></tr></thead><tbody>${rl.join("")}</tbody></table>`;
@@ -220,7 +220,7 @@
       const net=x=>x?U.num(x.seg_sumados)-U.num(x.seg_perdidos):null;
       const conv=x=>{ if(!x) return null; const a=U.num(x.m_alc_total), n=net(x); return (a&&n!=null)? n/a*100 : null; };
       const fp=v=>v==null?"–":v.toFixed(2).replace(".",",")+" %";
-      top=`<div class="kpis" style="margin:14px 0 4px">${kpi("Alcance total",U.num(d.m_alc_total),p?U.num(p.m_alc_total):null)}${kpi("Seguidores netos",net(d),net(p))}${kpi("Interacciones",U.num(d.m_inter),p?U.num(p.m_inter):null)}${kpi("Contactos nuevos",U.num(d.m_contactos),p?U.num(p.m_contactos):null)}${kpi("Conversión alcance → seg.",conv(d),conv(p),fp)}${kpi("Visualizaciones",U.num(d.m_views),p?U.num(p.m_views):null)}</div><div class="small muted">Comparativa contra ${p?esc(idx[`mensual|${slug}|${U.prevMonthId(per)}`].periodo_label):"el mes anterior (sin reporte cargado)"}</div>`;
+      top=`<div class="kpis" style="margin:14px 0 4px">${kpi("Espectadores",U.num(d.m_alc_total),p?U.num(p.m_alc_total):null)}${kpi("Seguidores netos",net(d),net(p))}${kpi("Interacciones",U.num(d.m_inter),p?U.num(p.m_inter):null)}${kpi("Contactos nuevos",U.num(d.m_contactos),p?U.num(p.m_contactos):null)}${kpi("Conversión alcance → seg.",conv(d),conv(p),fp)}${kpi("Visualizaciones",U.num(d.m_views),p?U.num(p.m_views):null)}</div><div class="small muted">Comparativa contra ${p?esc(idx[`mensual|${slug}|${U.prevMonthId(per)}`].periodo_label):"el mes anterior (sin reporte cargado)"}</div>`;
     }
     if(tipo==="cm"){
       top=`<div class="kpis" style="margin:14px 0 4px"><div class="kpi"><div class="k">Mensajes</div><div class="v">${U.fmt(U.num(d.msg_total))}</div></div><div class="kpi"><div class="k">Comentarios</div><div class="v">${U.fmt(U.num(d.msg_comentarios))}</div></div><div class="kpi"><div class="k">Calendario</div><div class="v" style="font-size:18px">${esc(d.cal_todo||"–")}</div></div><div class="kpi"><div class="k">Sin responder</div><div class="v" style="font-size:18px">${esc(d.msg_sin_resp||"–")}</div></div></div>`;
