@@ -20,7 +20,7 @@
   const FUENTE_OPTS = Object.entries(FUENTES).map(([k,v])=>v.nombre);
   const fuenteKey = nombre => Object.keys(FUENTES).find(k=>FUENTES[k].nombre===nombre) || "anton";
 
-  const TIPOS = { trimestral:{n:3,nombre:"Trimestral",periodoNombre:"trimestre"}, semestral:{n:6,nombre:"Semestral",periodoNombre:"semestre"}, anual:{n:12,nombre:"Anual",periodoNombre:"año"} };
+  const TIPOS = { trimestral:{n:3,nombre:"Trimestral",periodoNombre:"trimestre"}, semestral:{n:6,nombre:"Semestral",periodoNombre:"semestre"}, finanio:{n:7,nombre:"De fin de año (junio a diciembre)",periodoNombre:"período"}, anual:{n:12,nombre:"Anual",periodoNombre:"año"} };
 
   // periodo_id = "2026-06+3"  → meses 2026-06 .. 2026-08
   function parsePeriod(id){
