@@ -38,7 +38,18 @@
   function prevPeriodId(id){ const p=parsePeriod(id); const [y,m]=p.ini.split("-").map(Number); const d=new Date(y,m-1-p.n,1); return `${d.getFullYear()}-${U.pad(d.getMonth()+1)}+${p.n}`; }
   function nextMonths(id, k=4){ const p=parsePeriod(id); const [y,m]=p.fin.split("-").map(Number); const out=[]; for(let i=1;i<=k;i++){ const d=new Date(y,m-1+i,1); out.push({id:`${d.getFullYear()}-${U.pad(d.getMonth()+1)}`, nombre:U.MESES_C[d.getMonth()]}); } return out; }
   // Períodos calendario cerrados (trimestres desde ene/abr/jul/oct, semestres desde ene/jul, años desde ene), más reciente primero
-  function closedPeriods(n, today=new Date(), todos=false){
+  // Trimestres corridos (22/10/2026): Tritato va jun-ago, sep-nov, dic-feb, mar-may (el número es el mes en que arranca su ciclo).
+  // Mismo dato que REP_TRIM_INICIO en el Apps Script del panel: si se cambia acá, cambiarlo allá también.
+  const TRIM_INICIO = { "tritato": 6 };
+  function closedPeriods(n, today=new Date(), todos=false, inicio=0){
+    if(n===3 && inicio){
+      const C = window.IDEAMIA_CONFIG; const desde = todos ? "2000-01" : (C.PERIODICO_DESDE || "2000-01"); const out=[];
+      for(let k=1;k<=36;k++){ const e=new Date(today.getFullYear(), today.getMonth()-k, 1); // e = mes en que termina el período
+        if((((e.getMonth()-(inicio-1))%3)+3)%3!==2) continue;
+        const s=new Date(e.getFullYear(), e.getMonth()-2, 1), id=`${s.getFullYear()}-${U.pad(s.getMonth()+1)}+3`;
+        if(`${s.getFullYear()}-${U.pad(s.getMonth()+1)}` < desde) continue; out.push(parsePeriod(id)); }
+      return out;
+    }
     const C = window.IDEAMIA_CONFIG; const desde = todos ? "2000-01" : (C.PERIODICO_DESDE || "2000-01"); // todos: también los anteriores al sistema (para importar)
     const out=[]; const y0=today.getFullYear();
     for(let y=y0; y>=y0-3; y--){ for(let m=12; m>=1; m-=n){ // m = último mes del período
@@ -189,6 +200,6 @@
     ]
   };
   window.FORMS.periodico = PER;
-  window.PERIODICO = { FUENTES, fuenteKey, TIPOS, parsePeriod, prevPeriodId, nextMonths, startMonths, closedPeriods, aggregate, okrReal, okrEstado,
+  window.PERIODICO = { FUENTES, fuenteKey, TIPOS, TRIM_INICIO, parsePeriod, prevPeriodId, nextMonths, startMonths, closedPeriods, aggregate, okrReal, okrEstado,
     OKR_DEFAULT:["Seguidores netos","Seguidores por mes","Alcance total","Contactos","Contactos prom. mensual","Conversión a seguidores (%)"] };
 })();

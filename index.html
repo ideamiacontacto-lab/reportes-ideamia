@@ -8,7 +8,7 @@
 <script src="config.js"></script>
 <script src="shared.js?v=20261020"></script>
 <script src="forms.js?v=20261020d"></script>
-<script src="periodico.js?v=20261020"></script>
+<script src="periodico.js?v=20261022"></script>
 <script src="analisis.js?v=20261020"></script>
 <script src="importar.js"></script>
 <script src="fx.js"></script>
@@ -130,7 +130,7 @@
     let opts;
     if(isPer){
       $("#dur").value = String(dur);
-      const closed = P.closedPeriods(dur, new Date(), importando);
+      const closed = P.closedPeriods(dur, new Date(), importando, (P.TRIM_INICIO || {})[marca] || 0);   // Tritato: trimestres corridos
       const custom = periodo && periodo.includes("+") && !closed.find(c=>c.id===periodo) && periodo.split("+")[1]===String(dur) ? periodo : null;
       if(!periodo || !periodo.includes("+") || periodo.split("+")[1]!==String(dur)) periodo = closed.length ? closed[0].id : `${P.startMonths()[dur-1].id}+${dur}`;
       opts = closed.map(c=>({id:c.id,label:c.label}));
