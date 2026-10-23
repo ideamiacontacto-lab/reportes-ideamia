@@ -47,7 +47,7 @@
       for(let k=1;k<=36;k++){ const e=new Date(today.getFullYear(), today.getMonth()-k, 1); // e = mes en que termina el período
         if((((e.getMonth()-(inicio-1))%3)+3)%3!==2) continue;
         const s=new Date(e.getFullYear(), e.getMonth()-2, 1), id=`${s.getFullYear()}-${U.pad(s.getMonth()+1)}+3`;
-        if(`${s.getFullYear()}-${U.pad(s.getMonth()+1)}` < desde) continue; out.push(parsePeriod(id)); }
+        if(`${e.getFullYear()}-${U.pad(e.getMonth()+1)}` < desde) continue; out.push(parsePeriod(id)); }   // cuenta el mes en que TERMINA (igual que el panel)
       return out;
     }
     const C = window.IDEAMIA_CONFIG; const desde = todos ? "2000-01" : (C.PERIODICO_DESDE || "2000-01"); // todos: también los anteriores al sistema (para importar)
