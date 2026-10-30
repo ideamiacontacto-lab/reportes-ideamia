@@ -16,6 +16,15 @@
   const PILARES = ["Producto","Educativo / tip","Detrás de escena","Tendencia / humor","Testimonio / UGC","Promo / oferta","Institucional / marca","Receta / uso"];
   const DIAS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const cuando = pre => row("g2",[ seg(`${pre}_dia`,"Día de publicación",DIAS,{req:false}), txt(`${pre}_hora`,"Hora de publicación",{ph:"19:30",help:"Sirve para ver qué horario rinde más."}) ]);
+  // La mejor pieza de un formato (pedido de Joaquín, 30/10/2026): solo si ese formato se publicó en el período.
+  // Cuál fue, portada + enlace (en historias el enlace es opcional porque vencen) y por qué fue la mejor.
+  const mejor = (pre, cual, hubo, ej) => [
+    seg(`${pre}_hubo`,hubo,["Sí","No"]),
+    txt(`${pre}_nombre`,`¿Cuál fue ${cual}?`,{req:true,showIf:is(`${pre}_hubo`,"Sí")}),
+    row("g2",[ { type:"fotos", id:`${pre}_portada`, label:pre.endsWith("hist")?"Captura de la historia":"Portada o captura", max:1, cover:true, showIf:is(`${pre}_hubo`,"Sí"), help:"Una sola imagen." },
+      url(`${pre}_link`,"Enlace",{req:!pre.endsWith("hist"),showIf:is(`${pre}_hubo`,"Sí"),ph:pre.endsWith("hist")?"Opcional: las historias vencen a las 24 h":"https://www.instagram.com/…"}) ]),
+    ta(`${pre}_porque`,"¿Por qué fue la mejor?",{req:true,minLen:30,showIf:is(`${pre}_hubo`,"Sí"),help:`Con números y con la razón. Ej: ${ej}`})
+  ];
 
   // ---------- SOCIAL MEDIA · SEMANAL ----------
   // Versión compacta (pedido de Joaquín, 20/10/2026): solo lo que se usa. ¿Se publicó todo?, qué dejó el CM y qué se aplica,
@@ -50,7 +59,15 @@
         row("g2",[ n("seg_sumados","Seguidores sumados",{req:true}), n("seg_perdidos","Seguidores perdidos",{req:true}) ]),
         { type:"diag", target:"semana" }
       ]},
-      { num:4, titulo:"Para la semana que viene", hint:"Lo que vas a cambiar: el panel te lo recuerda", fields:[
+      { num:4, titulo:"Lo mejor de la semana", hint:"La historia, el carrusel y el reel que mejor funcionaron, si se publicaron", fields:[
+        { type:"sublabel", text:"Historia" },
+        ...mejor("sem_hist","la mejor historia","¿Se publicaron historias esta semana?","la encuesta del martes tuvo 120 votos, el doble que las otras: a la gente le gusta opinar del producto."),
+        { type:"sublabel", text:"Carrusel" },
+        ...mejor("sem_car","el mejor carrusel","¿Se publicó algún carrusel esta semana?","45 guardados contra 10 de los otros: era una lista útil para volver a ver."),
+        { type:"sublabel", text:"Reel" },
+        ...mejor("sem_reel","el mejor reel","¿Se publicó algún reel esta semana?","8.000 views y 30 compartidos: el gancho de los primeros 3 segundos mostraba el resultado.")
+      ]},
+      { num:5, titulo:"Para la semana que viene", hint:"Lo que vas a cambiar: el panel te lo recuerda", fields:[
         txt("cambio1","Cambio 1",{req:true}), txt("cambio2","Cambio 2 (opcional)")
       ]}
     ]
@@ -147,6 +164,7 @@
         seg("pub_tipo","¿Qué tipo de publicación funcionó mejor?",["Carrusel educativo","Foto de producto","Promo / oferta","Foto con persona","Diseño gráfico","No hubo publicaciones"])
       ]},
       { num:6, titulo:"Historias · conclusión del mes", fields:[
+        ...mejor("mes_hist","la historia del mes","¿Se publicaron historias este mes?","la caja de preguntas sobre envíos juntó 40 respuestas y 6 consultas por DM."),
         chk("hist_tipo","Tipo de historia que mejor funcionó",["Video a cámara (hablando)","Video del local o producto","Diseño gráfico","Interactiva (encuesta / caja)","UGC / repost"],{req:true}),
         ta("hist_concl","Conclusión general de historias",{req:true})
       ]},
