@@ -15,6 +15,16 @@
   // Tipo de contenido (pilar) y momento de publicación: alimentan la tabla automática "Qué funcionó" del mensual y del trimestral
   const PILARES = ["Producto","Educativo / tip","Detrás de escena","Tendencia / humor","Testimonio / UGC","Promo / oferta","Institucional / marca","Receta / uso"];
   const DIAS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  // 6/11/2026 (Orne: "no se puede poner más de una campaña por mes"): la primera campaña de cada nivel sigue en camp1_/camp2_
+  // (así no cambian los reportes viejos) y las demás van en un bloque repetible: camp1x1_, camp1x2_…
+  const campMas = (nv, ej) => [
+    seg(`camp${nv}_mas`,`¿Hubo otra campaña Nivel ${nv} este mes? ¿Cuántas más?`,["Ninguna","1","2","3"],{req:false,showIf:is(ej,"Sí")}),
+    { type:"repeat", id:`camp${nv}x`, countField:`camp${nv}_mas`, title:i=>`Otra campaña Nivel ${nv} · ${i+1}ª del mes`, item:i=>{ const pre=`camp${nv}x${i}`, vis=is(ej,"Sí"); return [
+      txt(`${pre}_nombre`,"Nombre / descripción de la campaña",{req:true,showIf:vis}),
+      row("g2",[ txt(`${pre}_reel`,"Reel que mejor performó",{showIf:vis}), txt(`${pre}_pub`,"Publicación / carrusel que mejor performó",{showIf:vis}) ]),
+      seg(`${pre}_min`,"¿Se cumplieron los mínimos del nivel?",["Sí","No","Parcialmente"],{showIf:vis}),
+      ta(`${pre}_concl`,"Conclusión de la campaña",{req:true,showIf:vis}) ]; } }
+  ];
   const cuando = pre => row("g2",[ seg(`${pre}_dia`,"Día de publicación",DIAS,{req:false}), txt(`${pre}_hora`,"Hora de publicación",{ph:"19:30",help:"Sirve para ver qué horario rinde más."}) ]);
   // La mejor pieza de un formato (pedido de Joaquín, 30/10/2026): solo si ese formato se publicó en el período.
   // Cuál fue, portada + enlace (en historias el enlace es opcional porque vencen) y por qué fue la mejor.
@@ -146,12 +156,14 @@
         row("g2",[ txt("camp1_reel","Reel que mejor performó",{showIf:is("camp1_ejec","Sí")}), txt("camp1_pub","Publicación / carrusel que mejor performó",{showIf:is("camp1_ejec","Sí")}) ]),
         seg("camp1_min","¿Se cumplieron los mínimos del nivel?",["Sí","No","Parcialmente"],{showIf:is("camp1_ejec","Sí")}),
         ta("camp1_concl","Conclusión de la campaña",{req:true,showIf:is("camp1_ejec","Sí")}),
+        ...campMas(1,"camp1_ejec"),
         { type:"sublabel", text:"Campaña Nivel 2 · 2 por semestre" },
         seg("camp2_ejec","¿Se ejecutó una campaña Nivel 2 este mes?",SN),
         txt("camp2_nombre","Nombre / descripción de la campaña",{req:true,showIf:is("camp2_ejec","Sí")}),
         row("g2",[ txt("camp2_reel","Reel que mejor performó",{showIf:is("camp2_ejec","Sí")}), txt("camp2_pub","Publicación / carrusel que mejor performó",{showIf:is("camp2_ejec","Sí")}) ]),
         seg("camp2_min","¿Se cumplieron los mínimos del nivel?",["Sí","No","Parcialmente"],{showIf:is("camp2_ejec","Sí")}),
-        ta("camp2_concl","Conclusión de la campaña",{req:true,showIf:is("camp2_ejec","Sí")})
+        ta("camp2_concl","Conclusión de la campaña",{req:true,showIf:is("camp2_ejec","Sí")}),
+        ...campMas(2,"camp2_ejec")
       ]},
       { num:4, titulo:"Reels del mes", hint:"Se precarga con los reels de los reportes semanales", ref:"contenido", fields:[
         rank("rk_reel","Ranking de reels, de mejor a peor",[{id:"desc",l:"Descripción del reel",w:3},{id:"fecha",l:"Fecha"},{id:"views",l:"Views orgánicas",t:"number"},{id:"views_pauta",l:"Views por pauta",t:"number"},{id:"mg",l:"Me gusta",t:"number"},{id:"guard",l:"Guardados",t:"number"},{id:"comp",l:"Compartidos",t:"number"},{id:"com",l:"Comentarios",t:"number"},{id:"seg",l:"Seguidores generados",t:"number"},{id:"link",l:"Enlace",t:"url",w:2}],5,"Reel"),
